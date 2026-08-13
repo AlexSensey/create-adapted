@@ -104,6 +104,17 @@ fixes, optional integrations, and support for newer NeoForge and JEI versions.
 If you would like to support the development, testing, and maintenance of
 Create: Adapted, you can [donate through StreamElements](https://streamelements.com/bugsgify/tip).
 
+Other donation options:
+
+- **Bitcoin (BTC):** `13R6PfZET4WSoQMXFJorDLKPVmdCWRWQgb`
+- **Ethereum (ERC-20):** `0xc96dd229eadb606a6e5485a8aa05dbd43f81b8fd`
+- **USDT (TRC-20):** `TNdo4pTSRnhEgoJqjmPdzMySp1pwSr6VLF`
+- **PayPal:** `AlexNeo2014@hotmail.com`
+
+Please verify the selected cryptocurrency and network before sending a
+payment. Transfers sent through an incompatible network may be permanently
+lost.
+
 Donations support this unofficial adaptation only. They do not provide access
 to the original Create assets and are not connected to the official Create
 development team.
