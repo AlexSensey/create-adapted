@@ -20,8 +20,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-This repository does not include the upstream Create textures, models, sounds,
-fonts, or other client artwork. Those upstream assets remain All Rights
-Reserved by The Create Team / The Creators of Create and are not licensed
-under this MIT License.
