@@ -1,0 +1,84 @@
+## Based on GitHub's Eclipse .gitignore
+
+run/
+.gradle/
+build/
+gradle-app.setting
+
+## IntelliJ IDEA
+
+.idea/
+out/
+*.iml
+*.iws
+*.ipr
+
+## Eclipse
+
+eclipse/
+*.pydevproject
+.project
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.classpath
+.settings/
+.loadpath
+.factorypath
+
+# External tool builders
+.externalToolBuilders/
+
+# Locally stored "Eclipse launch configurations"
+*.launch
+
+# CDT-specific
+.cproject
+
+# PDT-specific
+.buildpath
+
+.DS_Store
+/libs/
+
+# Local investigation/build inputs
+.agents/
+.codex/
+.tmp-mcsrc/
+META-INF/
+net/
+patches/
+build-public.stdout.log
+build-public.stderr.log
+
+# The upstream Create client assets are All Rights Reserved and must never be
+# committed to this public repository. The small 26.2 compatibility layer is
+# explicitly re-included below.
+src/main/resources/assets/**
+!src/main/resources/assets/create/
+src/main/resources/assets/create/**
+!src/main/resources/assets/create/items/
+!src/main/resources/assets/create/items/**
+!src/main/resources/assets/create/equipment/
+!src/main/resources/assets/create/equipment/**
+!src/main/resources/assets/create/models/
+src/main/resources/assets/create/models/**
+!src/main/resources/assets/create/models/item/
+src/main/resources/assets/create/models/item/**
+!src/main/resources/assets/create/models/item/schematic_flat.json
+!src/main/resources/assets/create/models/item/empty_schematic_flat.json
+!src/main/resources/assets/create/models/item/schematic_and_quill_flat.json
+!src/main/resources/assets/minecraft/
+src/main/resources/assets/minecraft/**
+!src/main/resources/assets/minecraft/atlases/
+src/main/resources/assets/minecraft/atlases/**
+!src/main/resources/assets/minecraft/atlases/blocks.json
+!src/main/resources/assets/minecraft/atlases/particles.json
+!src/main/resources/assets/minecraft/atlases/armor_trims.json
+
+src/generated/resources/assets/**

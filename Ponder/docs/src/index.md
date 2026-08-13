@@ -1,0 +1,33 @@
+---
+# https://vitepress.dev/reference/default-theme-home-page
+layout: home
+
+hero:
+  name: Ponder Wiki
+  tagline: Visual in-Game Documentation
+  actions:
+    - theme: alt
+      text: Getting started
+      link: /guide/project-setup
+    - theme: alt
+      text: API Docs
+      link: /api-docs
+  image:
+    src: /assets/ponder-icon.webp
+    alt: Ponder Icon
+
+# TODO
+features:
+  - title: For Users
+    details: From common issues to the development status of Create, All the info you need can be found here!
+    link: ./users
+    linkText: Read More
+  - title: For Translators
+    details: Are you looking to translate Create to a language you know? Our crowdin is a great place to get started with that!
+    link: https://crowdin.com/project/createmod
+    linkText: Start Translating
+  - title: For Developers
+    details: Are you a developer looking to make a Create addon or interact with Create's API? The API Docs have you covered!
+    link: ./developers
+    linkText: Get Started
+---

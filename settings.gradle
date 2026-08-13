@@ -1,0 +1,29 @@
+pluginManagement {
+    repositories {
+        mavenLocal()
+        gradlePluginPortal()
+        maven { url = "https://maven.neoforged.net/releases" }
+    }
+}
+
+if (file("Ponder").exists()) {
+    includeBuild(".")
+    includeBuild("Ponder") {
+        dependencySubstitution {
+            substitute(module("net.createmod.ponder:ponder-neoforge")).using(project(":neoforge"))
+            substitute(module("net.createmod.ponder:ponder-common")).using(project(":common"))
+        }
+    }
+}
+
+if (file("FlywheelStubs").exists()) {
+    includeBuild("FlywheelStubs") {
+        dependencySubstitution {
+            substitute(module("dev.engine-room.flywheel:flywheel-neoforge-26.2")).using(project(":"))
+            substitute(module("dev.engine-room.flywheel:flywheel-neoforge-api-26.2")).using(project(":"))
+            substitute(module("dev.engine-room.vanillin:vanillin-neoforge-26.2")).using(project(":"))
+        }
+    }
+}
+
+rootProject.name = "$mod_id-$minecraft_version"

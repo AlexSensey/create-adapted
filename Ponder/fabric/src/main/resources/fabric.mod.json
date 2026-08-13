@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "ponder",
+  "version": "${version}",
+  "name": "Ponder",
+  "icon": "logo.png",
+  "description": "Visual in-Game Documentation",
+  "authors": [
+    "${authors_json}"
+  ],
+  "contributors": [
+    "${contributors_json}"
+  ],
+  "contact": {
+    "sources": "https://github.com/Creators-of-Create/Ponder",
+    "issues": "https://github.com/Creators-of-Create/Ponder/issues"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "mixins": [
+    "ponder-common.mixins.json",
+    "ponder-common-client.mixins.json"
+  ],
+  "entrypoints": {
+    "main": [
+      "net.createmod.ponder.fabric.FabricPonder"
+    ],
+    "client": [
+      "net.createmod.ponder.fabric.FabricPonderClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=${fabric_loader_version}",
+    "fabric-api": ">=${fabric_api_version}",
+    "minecraft": "${minecraft_version}"
+  }
+}

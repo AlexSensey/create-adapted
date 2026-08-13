@@ -1,0 +1,12 @@
+{
+  "layers": {
+    "humanoid": [
+      { "texture": "create:netherite_diving_layer_1" },
+      { "texture": "create:netherite_diving_layer_2" }
+    ],
+    "humanoid_baby": [
+      { "texture": "create:netherite_diving_layer_1" },
+      { "texture": "create:netherite_diving_layer_2" }
+    ]
+  }
+}

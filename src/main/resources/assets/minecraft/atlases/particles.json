@@ -1,0 +1,14 @@
+{
+  "sources": [
+    {
+      "type": "minecraft:directory",
+      "source": "particle",
+      "prefix": ""
+    },
+    {
+      "type": "minecraft:single",
+      "resource": "catnip:special/blank",
+      "sprite": "catnip:special/blank"
+    }
+  ]
+}

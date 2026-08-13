@@ -1,0 +1,10 @@
+{
+  "layers": {
+    "humanoid": [
+      { "texture": "create:copper_diving" }
+    ],
+    "humanoid_baby": [
+      { "texture": "create:copper_diving" }
+    ]
+  }
+}

@@ -1,0 +1,98 @@
+package com.simibubi.create.content.trains.track;
+
+import org.apache.commons.lang3.mutable.MutableObject;
+
+import com.simibubi.create.AllDataComponents;
+import com.simibubi.create.AllPackets;
+import com.simibubi.create.AllSoundEvents;
+import com.simibubi.create.content.trains.graph.EdgePointType;
+import com.simibubi.create.content.trains.track.TrackTargetingBlockItem.OverlapResult;
+import com.simibubi.create.foundation.networking.BlockEntityConfigurationPacket;
+import com.simibubi.create.foundation.utility.CreateLang;
+import com.simibubi.create.infrastructure.config.AllConfigs;
+
+import io.netty.buffer.ByteBuf;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+
+public class CurvedTrackSelectionPacket extends BlockEntityConfigurationPacket<TrackBlockEntity> {
+	public static final StreamCodec<ByteBuf, CurvedTrackSelectionPacket> STREAM_CODEC = StreamCodec.composite(
+			BlockPos.STREAM_CODEC, packet -> packet.pos,
+			BlockPos.STREAM_CODEC, packet -> packet.targetPos,
+			ByteBufCodecs.BOOL, packet -> packet.front,
+			ByteBufCodecs.VAR_INT, packet -> packet.segment,
+			ByteBufCodecs.VAR_INT, packet -> packet.slot,
+			CurvedTrackSelectionPacket::new
+	);
+
+	private final BlockPos targetPos;
+	private final boolean front;
+	private final int segment;
+	private final int slot;
+
+	public CurvedTrackSelectionPacket(BlockPos pos, BlockPos targetPos, boolean front, int segment, int slot) {
+		super(pos);
+		this.targetPos = targetPos;
+		this.front = front;
+		this.segment = segment;
+		this.slot = slot;
+	}
+
+	@Override
+	protected void applySettings(ServerPlayer player, TrackBlockEntity be) {
+		if (player.getInventory()
+			.getSelectedSlot() != slot)
+			return;
+
+		ItemStack stack = player.getInventory()
+			.getItem(slot);
+		if (!(stack.getItem() instanceof TrackTargetingBlockItem targetingItem))
+			return;
+
+		if (player.isShiftKeyDown() && stack.has(AllDataComponents.TRACK_TARGETING_ITEM_SELECTED_POS)) {
+			com.simibubi.create.content.trains.TrainMessages.actionBar(player, CreateLang.translateDirect("track_target.clear"));
+			stack.remove(AllDataComponents.TRACK_TARGETING_ITEM_SELECTED_POS);
+			stack.remove(AllDataComponents.TRACK_TARGETING_ITEM_SELECTED_DIRECTION);
+			stack.remove(AllDataComponents.TRACK_TARGETING_ITEM_BEZIER);
+			AllSoundEvents.CONTROLLER_CLICK.play(player.level(), null, pos, 1, .5f);
+			return;
+		}
+
+		EdgePointType<?> type = targetingItem.getType(stack);
+		MutableObject<OverlapResult> result = new MutableObject<>(null);
+		BezierTrackPointLocation bezierTrackPointLocation = new BezierTrackPointLocation(targetPos, segment);
+		TrackTargetingBlockItem.withGraphLocation(player.level(), pos, front, bezierTrackPointLocation, type,
+			(overlap, location) -> result.setValue(overlap));
+
+		if (result.getValue() == null)
+			return;
+
+		if (result.getValue().feedback != null) {
+			com.simibubi.create.content.trains.TrainMessages.actionBar(player, CreateLang.translateDirect(result.getValue().feedback)
+				.withStyle(ChatFormatting.RED));
+			AllSoundEvents.DENY.play(player.level(), null, pos, .5f, 1);
+			return;
+		}
+
+		stack.set(AllDataComponents.TRACK_TARGETING_ITEM_SELECTED_POS, pos);
+		stack.set(AllDataComponents.TRACK_TARGETING_ITEM_SELECTED_DIRECTION, front);
+		stack.set(AllDataComponents.TRACK_TARGETING_ITEM_BEZIER, bezierTrackPointLocation);
+
+		com.simibubi.create.content.trains.TrainMessages.actionBar(player, CreateLang.translateDirect("track_target.set"));
+		AllSoundEvents.CONTROLLER_CLICK.play(player.level(), null, pos, 1, 1);
+	}
+
+	@Override
+	protected int maxRange() {
+		return AllConfigs.server().trains.maxTrackPlacementLength.get() + 16;
+	}
+
+	@Override
+	public PacketTypeProvider getTypeProvider() {
+		return AllPackets.SELECT_CURVED_TRACK;
+	}
+}

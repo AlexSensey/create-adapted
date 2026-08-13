@@ -1,0 +1,23 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "biomeswevegone"
+    }
+  ],
+  "type": "create:milling",
+  "ingredients": [
+    {
+      "type": "neoforge:compound",
+      "ingredients": [
+        "biomeswevegone:windswept_sandstone"
+      ]
+    }
+  ],
+  "processing_time": 150,
+  "results": [
+    {
+      "id": "biomeswevegone:windswept_sand"
+    }
+  ]
+}

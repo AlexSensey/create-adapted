@@ -1,0 +1,40 @@
+[versions]
+minecraft = "26.2"
+flywheel = "1.0.6"
+
+# https://neoforged.net/
+neoforge = "26.2.0.6-beta"
+mdg = "2.0.+"
+
+# https://fabricmc.net/develop/
+loom = "1.17.12"
+fabric-loader = "0.19.3"
+fabric-api = "0.152.0+26.2"
+
+# we need to manually depend on mixin (+extras) in common
+mixin = "0.17.3+mixin.0.8.7"
+mixin-extras = "0.5.4"
+
+[libraries]
+minecraft = { module = "com.mojang:minecraft", version.ref = "minecraft" }
+fabric-loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric-loader" }
+fabric-api = { module = "net.fabricmc.fabric-api:fabric-api", version.ref = "fabric-api" }
+mixin = { module = "net.fabricmc:sponge-mixin", version.ref = "mixin" }
+mixin-extras = { module = "io.github.llamalad7:mixinextras-common", version.ref = "mixin-extras" }
+
+flywheel-neoforge-api = { module = "dev.engine-room.flywheel:flywheel-neoforge-api-26.2", version.ref = "flywheel" }
+flywheel-neoforge = { module = "dev.engine-room.flywheel:flywheel-neoforge-26.2", version.ref = "flywheel" }
+flywheel-fabric-api = { module = "dev.engine-room.flywheel:flywheel-fabric-api-26.2", version.ref = "flywheel" }
+flywheel-fabric = { module = "dev.engine-room.flywheel:flywheel-fabric-26.2", version.ref = "flywheel" }
+
+[bundles]
+fabric = [ "fabric-loader", "fabric-api" ]
+mixin = [ "mixin", "mixin-extras" ]
+
+[plugins]
+mdg = { id = "net.neoforged.moddev", version.ref = "mdg" }
+loom = { id = "net.fabricmc.fabric-loom", version.ref = "loom" }
+
+# convention plugins
+configure-platform = { id = "configure-platform" }
+setup-git-hash = { id = "setup-git-hash" }

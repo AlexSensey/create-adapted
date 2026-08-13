@@ -1,0 +1,4 @@
+accessWidener v1 official
+
+# widenings needed for common, see catnip_common_source.accesswidener
+accessible class net/minecraft/client/gui/GuiGraphicsExtractor$ScissorStack

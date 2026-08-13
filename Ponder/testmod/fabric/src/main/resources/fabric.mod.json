@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "ponder_testmod",
+  "version": "${version}",
+  "name": "Ponder Testmod",
+  "description": "Test mod for Ponder",
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "client": [
+      "net.createmod.ponder.testmod.client.TestmodClient::init"
+    ]
+  },
+  "depends": {
+    "ponder": "=${version}"
+  }
+}

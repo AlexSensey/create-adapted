@@ -1,0 +1,1115 @@
+package com.simibubi.create.content.processing.basin;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Optional;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import com.google.common.collect.ImmutableList;
+import com.simibubi.create.AllBlockEntityTypes;
+import com.simibubi.create.AllParticleTypes;
+import com.simibubi.create.AllTags;
+import com.simibubi.create.Create;
+import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
+import com.simibubi.create.content.fluids.FluidFX;
+import com.simibubi.create.content.fluids.particle.FluidParticleData;
+import com.simibubi.create.content.kinetics.belt.behaviour.DirectBeltInputBehaviour;
+import com.simibubi.create.content.kinetics.mixer.MechanicalMixerBlockEntity;
+import com.simibubi.create.content.processing.burner.BlazeBurnerBlock;
+import com.simibubi.create.content.processing.burner.BlazeBurnerBlock.HeatLevel;
+import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
+import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
+import com.simibubi.create.foundation.blockEntity.behaviour.ValueBoxTransform;
+import com.simibubi.create.foundation.blockEntity.behaviour.filtering.FilteringBehaviour;
+import com.simibubi.create.foundation.blockEntity.behaviour.fluid.SmartFluidTankBehaviour;
+import com.simibubi.create.foundation.blockEntity.behaviour.fluid.SmartFluidTankBehaviour.TankSegment;
+import com.simibubi.create.foundation.blockEntity.behaviour.inventory.InvManipulationBehaviour;
+import com.simibubi.create.foundation.fluid.CombinedTankWrapper;
+import com.simibubi.create.foundation.fluid.SmartFluidTank;
+import com.simibubi.create.foundation.item.ItemHelper;
+import com.simibubi.create.foundation.item.SmartInventory;
+import com.simibubi.create.foundation.utility.BlockHelper;
+import com.simibubi.create.foundation.utility.CreateLang;
+
+import net.createmod.catnip.api.client.animation.AnimationTickHolder;
+import net.createmod.catnip.api.animation.LerpedFloat;
+import net.createmod.catnip.api.animation.LerpedFloat.Chaser;
+import net.createmod.catnip.api.data.Couple;
+import net.createmod.catnip.api.data.IntAttached;
+import net.createmod.catnip.api.data.Iterate;
+import net.createmod.catnip.api.lang.LangBuilder;
+import net.createmod.catnip.api.math.VecHelper;
+import net.createmod.catnip.api.nbt.NBTHelper;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.Direction.Axis;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.NonNullList;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.Clearable;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
+
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
+import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
+import net.neoforged.neoforge.items.ItemStackHandler;
+import net.neoforged.neoforge.items.wrapper.CombinedInvWrapper;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.ResourceHandlerUtil;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.transaction.SnapshotJournal;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
+
+public class BasinBlockEntity extends SmartBlockEntity implements IHaveGoggleInformation, Clearable {
+
+	private boolean areFluidsMoving;
+	LerpedFloat ingredientRotationSpeed;
+	LerpedFloat ingredientRotation;
+
+	public BasinInventory inputInventory;
+	public SmartFluidTankBehaviour inputTank;
+	protected SmartInventory outputInventory;
+	protected SmartFluidTankBehaviour outputTank;
+	private FilteringBehaviour filtering;
+	private boolean contentsChanged;
+
+	private Couple<SmartInventory> invs;
+	private Couple<SmartFluidTankBehaviour> tanks;
+
+	protected IItemHandlerModifiable itemCapability;
+	protected IFluidHandler fluidCapability;
+	private ResourceHandler<ItemResource> itemResourceCapability;
+	private ResourceHandler<FluidResource> fluidResourceCapability;
+
+	List<Direction> disabledSpoutputs;
+	Direction preferredSpoutput;
+	protected List<ItemStack> spoutputBuffer;
+	protected List<FluidStack> spoutputFluidBuffer;
+	int recipeBackupCheck;
+
+	public static final int OUTPUT_ANIMATION_TIME = 10;
+	List<IntAttached<ItemStack>> visualizedOutputItems;
+	List<IntAttached<FluidStack>> visualizedOutputFluids;
+
+	private @Nullable HeatLevel cachedHeatLevel;
+
+	public BasinBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+		super(type, pos, state);
+		inputInventory = new BasinInventory(9, this);
+		inputInventory.whenContentsChanged($ -> contentsChanged = true);
+		outputInventory = new BasinInventory(9, this).forbidInsertion()
+			.withMaxStackSize(64);
+		areFluidsMoving = false;
+		itemCapability = new CombinedInvWrapper(inputInventory, outputInventory);
+		contentsChanged = true;
+		ingredientRotation = LerpedFloat.angular()
+			.startWithValue(0);
+		ingredientRotationSpeed = LerpedFloat.linear()
+			.startWithValue(0);
+
+		invs = Couple.create(inputInventory, outputInventory);
+		tanks = Couple.create(inputTank, outputTank);
+		visualizedOutputItems = Collections.synchronizedList(new ArrayList<>());
+		visualizedOutputFluids = Collections.synchronizedList(new ArrayList<>());
+		disabledSpoutputs = new ArrayList<>();
+		preferredSpoutput = null;
+		spoutputBuffer = new ArrayList<>();
+		spoutputFluidBuffer = new ArrayList<>();
+		recipeBackupCheck = 20;
+	}
+
+	public static void registerCapabilities(RegisterCapabilitiesEvent event) {
+		event.registerBlockEntity(Capabilities.Item.BLOCK, AllBlockEntityTypes.BASIN.get(),
+			(be, side) -> be.getItemResourceCapability());
+		event.registerBlockEntity(Capabilities.Fluid.BLOCK, AllBlockEntityTypes.BASIN.get(),
+			(be, side) -> be.getFluidResourceCapability());
+	}
+
+	private ResourceHandler<ItemResource> getItemResourceCapability() {
+		if (itemResourceCapability == null)
+			itemResourceCapability = new ItemHandlerResourceHandler(itemCapability);
+		return itemResourceCapability;
+	}
+
+	private ResourceHandler<FluidResource> getFluidResourceCapability() {
+		if (fluidResourceCapability == null)
+			fluidResourceCapability = new BasinFluidResourceHandler();
+		return fluidResourceCapability;
+	}
+
+	@Override
+	public void addBehaviours(List<BlockEntityBehaviour> behaviours) {
+		behaviours.add(new DirectBeltInputBehaviour(this));
+		filtering = new FilteringBehaviour(this, new BasinValueBox()).withCallback(newFilter -> contentsChanged = true)
+			.forRecipes();
+		behaviours.add(filtering);
+
+		inputTank = new SmartFluidTankBehaviour(SmartFluidTankBehaviour.INPUT, this, 2, 1000, true)
+			.whenFluidUpdates(() -> contentsChanged = true);
+		outputTank = new SmartFluidTankBehaviour(SmartFluidTankBehaviour.OUTPUT, this, 2, 1000, true)
+			.whenFluidUpdates(() -> contentsChanged = true)
+			.forbidInsertion();
+		tanks = Couple.create(inputTank, outputTank);
+		behaviours.add(inputTank);
+		behaviours.add(outputTank);
+
+		fluidCapability = new CombinedTankWrapper(outputTank.getCapability(), inputTank.getCapability());
+	}
+
+	@Override
+	protected void read(CompoundTag compound, HolderLookup.Provider registries, boolean clientPacket) {
+		super.read(compound, registries, clientPacket);
+		inputInventory.deserializeNBT(registries, compound.getCompoundOrEmpty("InputItems"));
+		outputInventory.deserializeNBT(registries, compound.getCompoundOrEmpty("OutputItems"));
+
+		preferredSpoutput = null;
+		if (compound.contains("PreferredSpoutput"))
+			preferredSpoutput = readEnum(compound, "PreferredSpoutput", Direction.class, null);
+		disabledSpoutputs.clear();
+		compound.getListOrEmpty("DisabledSpoutput")
+			.forEach(tag -> {
+				tag.asString()
+					.ifPresent(name -> disabledSpoutputs.add(Direction.valueOf(name)));
+			});
+		spoutputBuffer = readItemList(compound.getListOrEmpty("Overflow"), registries);
+		spoutputFluidBuffer = readFluidList(compound.getListOrEmpty("FluidOverflow"), registries);
+
+		if (!clientPacket)
+			return;
+
+		NBTHelper.iterateCompoundList(compound.getListOrEmpty("VisualizedItems"),
+			c -> visualizedOutputItems.add(IntAttached.with(OUTPUT_ANIMATION_TIME, readItemStack(registries, c))));
+		NBTHelper.iterateCompoundList(compound.getListOrEmpty("VisualizedFluids"),
+			c -> visualizedOutputFluids.add(IntAttached.with(OUTPUT_ANIMATION_TIME, readFluidStack(registries, c))));
+	}
+
+	@Override
+	public void write(CompoundTag compound, HolderLookup.Provider registries, boolean clientPacket) {
+		super.write(compound, registries, clientPacket);
+		compound.put("InputItems", inputInventory.serializeNBT(registries));
+		compound.put("OutputItems", outputInventory.serializeNBT(registries));
+
+		if (preferredSpoutput != null)
+			writeEnum(compound, "PreferredSpoutput", preferredSpoutput);
+		net.minecraft.nbt.ListTag disabledList = new net.minecraft.nbt.ListTag();
+		disabledSpoutputs.forEach(d -> disabledList.add(StringTag.valueOf(d.name())));
+		compound.put("DisabledSpoutput", disabledList);
+		compound.put("Overflow", writeItemList(spoutputBuffer, registries));
+		compound.put("FluidOverflow", writeFluidList(spoutputFluidBuffer, registries));
+
+		if (!clientPacket)
+			return;
+
+		compound.put("VisualizedItems",
+			NBTHelper.writeCompoundList(visualizedOutputItems, ia -> writeItemStack(registries, ia.getValue())));
+		compound.put("VisualizedFluids",
+			NBTHelper.writeCompoundList(visualizedOutputFluids, ia -> writeFluidStack(registries, ia.getValue())));
+		visualizedOutputItems.clear();
+		visualizedOutputFluids.clear();
+	}
+
+	private static List<ItemStack> readItemList(ListTag list, HolderLookup.Provider registries) {
+		List<ItemStack> stacks = new ArrayList<>(list.size());
+		NBTHelper.iterateCompoundList(list, tag -> stacks.add(readItemStack(registries, tag)));
+		return stacks;
+	}
+
+	private static ListTag writeItemList(List<ItemStack> stacks, HolderLookup.Provider registries) {
+		return NBTHelper.writeCompoundList(stacks, stack -> writeItemStack(registries, stack));
+	}
+
+	private static List<FluidStack> readFluidList(ListTag list, HolderLookup.Provider registries) {
+		List<FluidStack> stacks = new ArrayList<>(list.size());
+		NBTHelper.iterateCompoundList(list, tag -> stacks.add(readFluidStack(registries, tag)));
+		return stacks;
+	}
+
+	private static ListTag writeFluidList(List<FluidStack> stacks, HolderLookup.Provider registries) {
+		return NBTHelper.writeCompoundList(stacks, stack -> writeFluidStack(registries, stack));
+	}
+
+	private static ItemStack readItemStack(HolderLookup.Provider registries, Tag tag) {
+		return ItemStack.OPTIONAL_CODEC.decode(registries.createSerializationContext(NbtOps.INSTANCE), tag)
+			.resultOrPartial(error -> Create.LOGGER.error("Failed to deserialize basin item: {}", error))
+			.map(result -> result.getFirst())
+			.orElse(ItemStack.EMPTY);
+	}
+
+	private static CompoundTag writeItemStack(HolderLookup.Provider registries, ItemStack stack) {
+		return ItemStack.OPTIONAL_CODEC.encodeStart(registries.createSerializationContext(NbtOps.INSTANCE), stack)
+			.resultOrPartial(error -> Create.LOGGER.error("Failed to serialize basin item: {}", error))
+			.filter(CompoundTag.class::isInstance)
+			.map(CompoundTag.class::cast)
+			.orElseGet(CompoundTag::new);
+	}
+
+	private static FluidStack readFluidStack(HolderLookup.Provider registries, Tag tag) {
+		return FluidStack.OPTIONAL_CODEC.decode(registries.createSerializationContext(NbtOps.INSTANCE), tag)
+			.resultOrPartial(error -> Create.LOGGER.error("Failed to deserialize basin fluid: {}", error))
+			.map(result -> result.getFirst())
+			.orElse(FluidStack.EMPTY);
+	}
+
+	private static CompoundTag writeFluidStack(HolderLookup.Provider registries, FluidStack stack) {
+		return FluidStack.OPTIONAL_CODEC.encodeStart(registries.createSerializationContext(NbtOps.INSTANCE), stack)
+			.resultOrPartial(error -> Create.LOGGER.error("Failed to serialize basin fluid: {}", error))
+			.filter(CompoundTag.class::isInstance)
+			.map(CompoundTag.class::cast)
+			.orElseGet(CompoundTag::new);
+	}
+
+	@Override
+	public void clearContent() {
+		spoutputBuffer.clear();
+		inputInventory.clearContent();
+		outputInventory.clearContent();
+		filtering.setFilter(ItemStack.EMPTY);
+	}
+
+
+	@Override
+	public void destroy() {
+		super.destroy();
+		ItemHelper.dropContents(level, worldPosition, inputInventory);
+		ItemHelper.dropContents(level, worldPosition, outputInventory);
+		spoutputBuffer.forEach(is -> Block.popResource(level, worldPosition, is));
+	}
+
+	@Override
+	public void remove() {
+		super.remove();
+		onEmptied();
+	}
+
+	public void onEmptied() {
+		getOperator().ifPresent(be -> be.basinRemoved = true);
+	}
+
+	@Override
+	public void invalidate() {
+		super.invalidate();
+		invalidateCapabilities();
+	}
+
+	@Override
+	public void notifyUpdate() {
+		super.notifyUpdate();
+	}
+
+	@Override
+	public void lazyTick() {
+		super.lazyTick();
+
+		if (!level.isClientSide()) {
+			updateSpoutput();
+			if (recipeBackupCheck-- > 0)
+				return;
+			recipeBackupCheck = 20;
+			if (isEmpty())
+				return;
+			notifyChangeOfContents();
+			return;
+		}
+
+		BlockEntity blockEntity = level.getBlockEntity(worldPosition.above(2));
+		if (!(blockEntity instanceof MechanicalMixerBlockEntity mixer)) {
+			setAreFluidsMoving(false);
+			return;
+		}
+
+		setAreFluidsMoving(mixer.running && mixer.runningTicks <= 20);
+	}
+
+	public boolean isEmpty() {
+		return inputInventory.isEmpty() && outputInventory.isEmpty() && inputTank.isEmpty() && outputTank.isEmpty();
+	}
+
+	public void onWrenched(Direction face) {
+		BlockState blockState = getBlockState();
+		Direction currentFacing = blockState.getValue(BasinBlock.FACING);
+
+		disabledSpoutputs.remove(face);
+		if (currentFacing == face) {
+			if (preferredSpoutput == face)
+				preferredSpoutput = null;
+			disabledSpoutputs.add(face);
+		} else
+			preferredSpoutput = face;
+
+		updateSpoutput();
+	}
+
+	private void updateSpoutput() {
+		BlockState blockState = getBlockState();
+		Direction currentFacing = blockState.getValue(BasinBlock.FACING);
+		Direction newFacing = Direction.DOWN;
+		for (Direction test : Iterate.horizontalDirections) {
+			boolean canOutputTo = BasinBlock.canOutputTo(level, worldPosition, test);
+			if (canOutputTo && !disabledSpoutputs.contains(test))
+				newFacing = test;
+		}
+
+		if (preferredSpoutput != null && BasinBlock.canOutputTo(level, worldPosition, preferredSpoutput)
+			&& preferredSpoutput != Direction.UP)
+			newFacing = preferredSpoutput;
+
+		if (newFacing == currentFacing)
+			return;
+
+		level.setBlockAndUpdate(worldPosition, blockState.setValue(BasinBlock.FACING, newFacing));
+
+		if (newFacing.getAxis()
+			.isVertical())
+			return;
+
+		for (int slot = 0; slot < outputInventory.getSlots(); slot++) {
+			ItemStack extractItem = outputInventory.extractItem(slot, 64, true);
+			if (extractItem.isEmpty())
+				continue;
+			if (acceptOutputs(ImmutableList.of(extractItem), Collections.emptyList(), true))
+				acceptOutputs(ImmutableList.of(outputInventory.extractItem(slot, 64, false)), Collections.emptyList(),
+					false);
+		}
+
+		IFluidHandler handler = outputTank.getCapability();
+		for (int slot = 0; slot < handler.getTanks(); slot++) {
+			FluidStack fs = handler.getFluidInTank(slot)
+				.copy();
+			if (fs.isEmpty())
+				continue;
+			if (acceptOutputs(Collections.emptyList(), ImmutableList.of(fs), true)) {
+				handler.drain(fs, FluidAction.EXECUTE);
+				acceptOutputs(Collections.emptyList(), ImmutableList.of(fs), false);
+			}
+		}
+
+		notifyChangeOfContents();
+		notifyUpdate();
+	}
+
+	@Override
+	public void tick() {
+		cachedHeatLevel = null;
+
+		super.tick();
+		if (level.isClientSide()) {
+			createFluidParticles();
+			tickVisualizedOutputs();
+			ingredientRotationSpeed.tickChaser();
+			ingredientRotation.setValue(ingredientRotation.getValue() + ingredientRotationSpeed.getValue());
+		}
+
+		if ((!spoutputBuffer.isEmpty() || !spoutputFluidBuffer.isEmpty()) && !level.isClientSide())
+			tryClearingSpoutputOverflow();
+		if (!contentsChanged)
+			return;
+
+		contentsChanged = false;
+		getOperator().ifPresent(be -> be.basinChecker.scheduleUpdate());
+
+		for (Direction offset : Iterate.horizontalDirections) {
+			BlockPos toUpdate = worldPosition.above()
+				.relative(offset);
+			BlockState stateToUpdate = level.getBlockState(toUpdate);
+			if (stateToUpdate.getBlock() instanceof BasinBlock
+				&& stateToUpdate.getValue(BasinBlock.FACING) == offset.getOpposite()) {
+				BlockEntity be = level.getBlockEntity(toUpdate);
+				if (be instanceof BasinBlockEntity)
+					((BasinBlockEntity) be).contentsChanged = true;
+			}
+		}
+	}
+
+	private void tryClearingSpoutputOverflow() {
+		BlockState blockState = getBlockState();
+		if (!(blockState.getBlock() instanceof BasinBlock))
+			return;
+		Direction direction = blockState.getValue(BasinBlock.FACING);
+		BlockEntity be = level.getBlockEntity(worldPosition.below()
+			.relative(direction));
+
+		FilteringBehaviour filter = null;
+		InvManipulationBehaviour inserter = null;
+		if (be != null) {
+			filter = BlockEntityBehaviour.get(level, be.getBlockPos(), FilteringBehaviour.TYPE);
+			inserter = BlockEntityBehaviour.get(level, be.getBlockPos(), InvManipulationBehaviour.TYPE);
+		}
+
+		if (filter != null && filter.isRecipeFilter())
+			filter = null; // Do not test spout outputs against the recipe filter
+
+		IItemHandler targetInv = be == null ? null : inserter == null ? null : inserter.getInventory();
+
+		ResourceHandler<FluidResource> targetTank = be == null ? null
+			: level.getCapability(Capabilities.Fluid.BLOCK, be.getBlockPos(), direction.getOpposite());
+
+		boolean update = false;
+
+		for (Iterator<ItemStack> iterator = spoutputBuffer.iterator(); iterator.hasNext(); ) {
+			ItemStack itemStack = iterator.next();
+
+			if (direction == Direction.DOWN) {
+				Block.popResource(level, worldPosition, itemStack);
+				iterator.remove();
+				update = true;
+				continue;
+			}
+
+			if (targetInv == null)
+				break;
+
+			ItemStack remainder = ItemHandlerHelper.insertItemStacked(targetInv, itemStack, true);
+			if (remainder.getCount() == itemStack.getCount())
+				continue;
+			if (filter != null && !filter.test(itemStack))
+				continue;
+
+			if (visualizedOutputItems.size() < 3)
+				visualizedOutputItems.add(IntAttached.withZero(itemStack));
+			update = true;
+
+			remainder = ItemHandlerHelper.insertItemStacked(targetInv, itemStack.copy(), false);
+			if (remainder.isEmpty())
+				iterator.remove();
+			else
+				itemStack.setCount(remainder.getCount());
+		}
+
+		for (Iterator<FluidStack> iterator = spoutputFluidBuffer.iterator(); iterator.hasNext(); ) {
+			FluidStack fluidStack = iterator.next();
+
+			if (direction == Direction.DOWN) {
+				iterator.remove();
+				update = true;
+				continue;
+			}
+
+			if (targetTank == null)
+				break;
+
+			if (!acceptFluidOutputsIntoHandler(ImmutableList.of(fluidStack), true, targetTank))
+				continue;
+			if (!acceptFluidOutputsIntoHandler(ImmutableList.of(fluidStack), false, targetTank))
+				continue;
+
+			update = true;
+			iterator.remove();
+			if (visualizedOutputFluids.size() < 3)
+				visualizedOutputFluids.add(IntAttached.withZero(fluidStack));
+		}
+
+		if (update) {
+			notifyChangeOfContents();
+			sendData();
+		}
+	}
+
+	public float getTotalFluidUnits(float partialTicks) {
+		int renderedFluids = 0;
+		float totalUnits = 0;
+
+		for (SmartFluidTankBehaviour behaviour : getTanks()) {
+			if (behaviour == null)
+				continue;
+			for (TankSegment tankSegment : behaviour.getTanks()) {
+				if (tankSegment.getRenderedFluid()
+					.isEmpty())
+					continue;
+				float units = tankSegment.getTotalUnits(partialTicks);
+				if (units < 1)
+					continue;
+				totalUnits += units;
+				renderedFluids++;
+			}
+		}
+
+		if (renderedFluids == 0)
+			return 0;
+		if (totalUnits < 1)
+			return 0;
+		return totalUnits;
+	}
+
+	private Optional<BasinOperatingBlockEntity> getOperator() {
+		if (level == null)
+			return Optional.empty();
+		BlockEntity be = level.getBlockEntity(worldPosition.above(2));
+		if (be instanceof BasinOperatingBlockEntity)
+			return Optional.of((BasinOperatingBlockEntity) be);
+		return Optional.empty();
+	}
+
+	public FilteringBehaviour getFilter() {
+		return filtering;
+	}
+
+	public void notifyChangeOfContents() {
+		contentsChanged = true;
+	}
+
+	public SmartInventory getInputInventory() {
+		return inputInventory;
+	}
+
+	public SmartInventory getOutputInventory() {
+		return outputInventory;
+	}
+
+	public boolean canContinueProcessing() {
+		return spoutputBuffer.isEmpty() && spoutputFluidBuffer.isEmpty();
+	}
+
+	public boolean acceptOutputs(List<ItemStack> outputItems, List<FluidStack> outputFluids, boolean simulate) {
+		outputInventory.allowInsertion();
+		outputTank.allowInsertion();
+		boolean acceptOutputsInner = acceptOutputsInner(outputItems, outputFluids, simulate);
+		outputInventory.forbidInsertion();
+		outputTank.forbidInsertion();
+		return acceptOutputsInner;
+	}
+
+	private boolean acceptOutputsInner(List<ItemStack> outputItems, List<FluidStack> outputFluids, boolean simulate) {
+		BlockState blockState = getBlockState();
+		if (!(blockState.getBlock() instanceof BasinBlock))
+			return false;
+
+		Direction direction = blockState.getValue(BasinBlock.FACING);
+		if (direction != Direction.DOWN) {
+
+			BlockEntity be = level.getBlockEntity(worldPosition.below()
+				.relative(direction));
+
+			InvManipulationBehaviour inserter =
+				be == null ? null : BlockEntityBehaviour.get(level, be.getBlockPos(), InvManipulationBehaviour.TYPE);
+			IItemHandler targetInv = be == null ? null : inserter == null ? null : inserter.getInventory();
+			ResourceHandler<FluidResource> targetTank = be == null ? null
+				: level.getCapability(Capabilities.Fluid.BLOCK, be.getBlockPos(), direction.getOpposite());
+			boolean externalTankNotPresent = targetTank == null;
+
+			if (!outputItems.isEmpty() && targetInv == null)
+				return false;
+			if (!outputFluids.isEmpty() && externalTankNotPresent) {
+				// Special case - fluid outputs but output only accepts items
+				IFluidHandler internalTargetTank = outputTank.getCapability();
+				if (internalTargetTank == null)
+					return false;
+				if (!acceptFluidOutputsIntoBasin(outputFluids, simulate, internalTargetTank))
+					return false;
+			}
+
+			if (simulate)
+				return true;
+			for (ItemStack itemStack : outputItems)
+				if (!itemStack.isEmpty())
+					spoutputBuffer.add(itemStack.copy());
+			if (!externalTankNotPresent)
+				for (FluidStack fluidStack : outputFluids)
+					spoutputFluidBuffer.add(fluidStack.copy());
+			return true;
+		}
+
+		IItemHandler targetInv = outputInventory;
+		IFluidHandler targetTank = outputTank.getCapability();
+
+		if (targetInv == null && !outputItems.isEmpty())
+			return false;
+		if (!acceptItemOutputsIntoBasin(outputItems, simulate, targetInv))
+			return false;
+		if (outputFluids.isEmpty())
+			return true;
+		if (targetTank == null)
+			return false;
+		if (!acceptFluidOutputsIntoBasin(outputFluids, simulate, targetTank))
+			return false;
+
+		return true;
+	}
+
+	private boolean acceptFluidOutputsIntoBasin(List<FluidStack> outputFluids, boolean simulate,
+												IFluidHandler targetTank) {
+		for (FluidStack fluidStack : outputFluids) {
+			FluidAction action = simulate ? FluidAction.SIMULATE : FluidAction.EXECUTE;
+			int fill = targetTank instanceof SmartFluidTankBehaviour.InternalFluidHandler
+				? ((SmartFluidTankBehaviour.InternalFluidHandler) targetTank).forceFill(fluidStack.copy(), action)
+				: targetTank.fill(fluidStack.copy(), action);
+			if (fill != fluidStack.getAmount())
+				return false;
+		}
+		return true;
+	}
+
+	private boolean acceptFluidOutputsIntoHandler(List<FluidStack> outputFluids, boolean simulate,
+												  ResourceHandler<FluidResource> targetTank) {
+		try (Transaction transaction = Transaction.openRoot()) {
+			for (FluidStack fluidStack : outputFluids) {
+				if (fluidStack.isEmpty())
+					continue;
+				FluidResource resource = FluidResource.of(fluidStack);
+				int inserted = ResourceHandlerUtil.insertStacking(targetTank, resource, fluidStack.getAmount(), transaction);
+				if (inserted != fluidStack.getAmount())
+					return false;
+			}
+			if (!simulate)
+				transaction.commit();
+			return true;
+		}
+	}
+
+	private boolean acceptItemOutputsIntoBasin(List<ItemStack> outputItems, boolean simulate, IItemHandler targetInv) {
+		for (ItemStack itemStack : outputItems) {
+			if (!ItemHandlerHelper.insertItemStacked(targetInv, itemStack.copy(), simulate)
+				.isEmpty())
+				return false;
+		}
+		return true;
+	}
+
+	public void readOnlyItems(CompoundTag compound, HolderLookup.Provider registries) {
+		inputInventory.deserializeNBT(registries, compound.getCompoundOrEmpty("InputItems"));
+		outputInventory.deserializeNBT(registries, compound.getCompoundOrEmpty("OutputItems"));
+	}
+
+	private static <E extends Enum<E>> E readEnum(CompoundTag tag, String key, Class<E> enumClass, E fallback) {
+		String value = tag.getStringOr(key, fallback == null ? "" : fallback.name());
+		try {
+			return Enum.valueOf(enumClass, value);
+		} catch (IllegalArgumentException e) {
+			return fallback;
+		}
+	}
+
+	private static void writeEnum(CompoundTag tag, String key, Enum<?> value) {
+		tag.putString(key, value.name());
+	}
+
+	public static HeatLevel getHeatLevelOf(BlockState state) {
+		if (state.hasProperty(BlazeBurnerBlock.HEAT_LEVEL))
+			return state.getValue(BlazeBurnerBlock.HEAT_LEVEL);
+		return AllTags.AllBlockTags.PASSIVE_BOILER_HEATERS.matches(state) && BlockHelper.isNotUnheated(state)
+			? HeatLevel.SMOULDERING
+			: HeatLevel.NONE;
+	}
+
+	public Couple<SmartFluidTankBehaviour> getTanks() {
+		return tanks;
+	}
+
+	public Couple<SmartInventory> getInvs() {
+		return invs;
+	}
+
+	// client things
+
+	private void tickVisualizedOutputs() {
+		visualizedOutputFluids.forEach(IntAttached::decrement);
+		visualizedOutputItems.forEach(IntAttached::decrement);
+		visualizedOutputFluids.removeIf(IntAttached::isOrBelowZero);
+		visualizedOutputItems.removeIf(IntAttached::isOrBelowZero);
+	}
+
+	private void createFluidParticles() {
+		RandomSource r = level.getRandom();
+
+		if (!visualizedOutputFluids.isEmpty())
+			createOutputFluidParticles(r);
+
+		if (!areFluidsMoving && r.nextFloat() > 1 / 8f)
+			return;
+
+		int segments = 0;
+		for (SmartFluidTankBehaviour behaviour : getTanks()) {
+			if (behaviour == null)
+				continue;
+			for (TankSegment tankSegment : behaviour.getTanks())
+				if (!tankSegment.isEmpty(0))
+					segments++;
+		}
+		if (segments < 2)
+			return;
+
+		float totalUnits = getTotalFluidUnits(0);
+		if (totalUnits == 0)
+			return;
+		float fluidLevel = Mth.clamp(totalUnits / 2000, 0, 1);
+		float rim = 2 / 16f;
+		float space = 12 / 16f;
+		float surface = worldPosition.getY() + rim + space * fluidLevel + 1 / 32f;
+
+		if (areFluidsMoving) {
+			createMovingFluidParticles(surface, segments);
+			return;
+		}
+
+		for (SmartFluidTankBehaviour behaviour : getTanks()) {
+			if (behaviour == null)
+				continue;
+			for (TankSegment tankSegment : behaviour.getTanks()) {
+				if (tankSegment.isEmpty(0))
+					continue;
+				float x = worldPosition.getX() + rim + space * r.nextFloat();
+				float z = worldPosition.getZ() + rim + space * r.nextFloat();
+				level.addAlwaysVisibleParticle(
+					new FluidParticleData(AllParticleTypes.BASIN_FLUID.get(), tankSegment.getRenderedFluid()), x,
+					surface, z, 0, 0, 0);
+			}
+		}
+	}
+
+	private void createOutputFluidParticles(RandomSource r) {
+		BlockState blockState = getBlockState();
+		if (!(blockState.getBlock() instanceof BasinBlock))
+			return;
+		Direction direction = blockState.getValue(BasinBlock.FACING);
+		if (direction == Direction.DOWN)
+			return;
+		Vec3 directionVec = Vec3.atLowerCornerOf(direction.getUnitVec3i());
+		Vec3 outVec = VecHelper.getCenterOf(worldPosition)
+			.add(directionVec.scale(.65)
+				.subtract(0, 1 / 4f, 0));
+		Vec3 outMotion = directionVec.scale(1 / 16f)
+			.add(0, -1 / 16f, 0);
+
+		for (int i = 0; i < 2; i++) {
+			visualizedOutputFluids.forEach(ia -> {
+				FluidStack fluidStack = ia.getValue();
+				ParticleOptions fluidParticle = FluidFX.getFluidParticle(fluidStack);
+				Vec3 m = VecHelper.offsetRandomly(outMotion, r, 1 / 16f);
+				level.addAlwaysVisibleParticle(fluidParticle, outVec.x, outVec.y, outVec.z, m.x, m.y, m.z);
+			});
+		}
+	}
+
+	private void createMovingFluidParticles(float surface, int segments) {
+		Vec3 pointer = new Vec3(1, 0, 0).scale(1 / 16f);
+		float interval = 360f / segments;
+		Vec3 centerOf = VecHelper.getCenterOf(worldPosition);
+		float intervalOffset = (AnimationTickHolder.getTicks() * 18) % 360;
+
+		int currentSegment = 0;
+		for (SmartFluidTankBehaviour behaviour : getTanks()) {
+			if (behaviour == null)
+				continue;
+			for (TankSegment tankSegment : behaviour.getTanks()) {
+				if (tankSegment.isEmpty(0))
+					continue;
+				float angle = interval * (1 + currentSegment) + intervalOffset;
+				Vec3 vec = centerOf.add(VecHelper.rotate(pointer, angle, Axis.Y));
+				level.addAlwaysVisibleParticle(
+					new FluidParticleData(AllParticleTypes.BASIN_FLUID.get(), tankSegment.getRenderedFluid()), vec.x(),
+					surface, vec.z(), 1, 0, 0);
+				currentSegment++;
+			}
+		}
+	}
+
+	public boolean areFluidsMoving() {
+		return areFluidsMoving;
+	}
+
+	public boolean setAreFluidsMoving(boolean areFluidsMoving) {
+		this.areFluidsMoving = areFluidsMoving;
+		ingredientRotationSpeed.chase(areFluidsMoving ? 20 : 0, .1f, Chaser.EXP);
+		return areFluidsMoving;
+	}
+
+	@Override
+	public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
+		CreateLang.translate("gui.goggles.basin_contents")
+			.forGoggles(tooltip);
+
+		if (itemCapability == null)
+			itemCapability = new ItemStackHandler();
+		if (fluidCapability == null)
+			fluidCapability = new FluidTank(0);
+
+		boolean isEmpty = true;
+
+		for (int i = 0; i < itemCapability.getSlots(); i++) {
+			ItemStack stackInSlot = itemCapability.getStackInSlot(i);
+			if (stackInSlot.isEmpty())
+				continue;
+			CreateLang.text("")
+				.add(CreateLang.text(stackInSlot.getHoverName().getString())
+					.style(ChatFormatting.GRAY))
+				.add(CreateLang.text(" x" + stackInSlot.getCount())
+					.style(ChatFormatting.GREEN))
+				.forGoggles(tooltip, 1);
+			isEmpty = false;
+		}
+
+		LangBuilder mb = CreateLang.translate("generic.unit.millibuckets");
+		for (int i = 0; i < fluidCapability.getTanks(); i++) {
+			FluidStack fluidStack = fluidCapability.getFluidInTank(i);
+			if (fluidStack.isEmpty())
+				continue;
+			CreateLang.text("")
+				.add(CreateLang.fluidName(fluidStack)
+					.add(CreateLang.text(" "))
+					.style(ChatFormatting.GRAY)
+					.add(CreateLang.number(fluidStack.getAmount())
+						.add(mb)
+						.style(ChatFormatting.BLUE)))
+				.forGoggles(tooltip, 1);
+			isEmpty = false;
+		}
+
+		if (isEmpty)
+			tooltip.remove(0);
+
+		return true;
+	}
+
+	@NotNull HeatLevel getHeatLevel() {
+		if (cachedHeatLevel == null) {
+			if (level == null)
+				return HeatLevel.NONE;
+
+			cachedHeatLevel = getHeatLevelOf(level.getBlockState(getBlockPos().below(1)));
+		}
+		return cachedHeatLevel;
+	}
+
+	static class BasinValueBox extends ValueBoxTransform.Sided {
+
+		@Override
+		protected Vec3 getSouthLocation() {
+			return VecHelper.voxelSpace(8, 12, 16.05);
+		}
+
+		@Override
+		protected boolean isSideActive(BlockState state, Direction direction) {
+			return direction.getAxis()
+				.isHorizontal();
+		}
+
+		@Override
+		public boolean testHit(net.minecraft.world.level.LevelAccessor level, BlockPos pos, BlockState state,
+			Vec3 localHit) {
+			if (!isSideActive(state, getSide()))
+				return false;
+			Vec3 offset = getLocalOffset(level, pos, state);
+			if (offset == null)
+				return false;
+			Direction side = getSide();
+			if (localHit.distanceTo(offset) < .42f)
+				return true;
+			if (side.getAxis() == Axis.X)
+				return Math.abs(localHit.x - offset.x) < .08f && Math.abs(localHit.y - offset.y) < .34f
+					&& Math.abs(localHit.z - offset.z) < .34f;
+			return Math.abs(localHit.z - offset.z) < .08f && Math.abs(localHit.y - offset.y) < .34f
+				&& Math.abs(localHit.x - offset.x) < .34f;
+		}
+
+	}
+
+	private static class ItemHandlerResourceHandler implements ResourceHandler<ItemResource> {
+		private final IItemHandlerModifiable handler;
+		private final List<SlotJournal> journals;
+
+		private ItemHandlerResourceHandler(IItemHandlerModifiable handler) {
+			this.handler = handler;
+			journals = new ArrayList<>();
+			for (int slot = 0; slot < handler.getSlots(); slot++)
+				journals.add(new SlotJournal(slot));
+		}
+
+		@Override
+		public int size() {
+			return handler.getSlots();
+		}
+
+		@Override
+		public ItemResource getResource(int index) {
+			return ItemResource.of(handler.getStackInSlot(index));
+		}
+
+		@Override
+		public long getAmountAsLong(int index) {
+			return handler.getStackInSlot(index).getCount();
+		}
+
+		@Override
+		public long getCapacityAsLong(int index, ItemResource resource) {
+			if (!resource.isEmpty() && !isValid(index, resource))
+				return 0;
+			return handler.getSlotLimit(index);
+		}
+
+		@Override
+		public boolean isValid(int index, ItemResource resource) {
+			if (resource.isEmpty())
+				return true;
+			return handler.isItemValid(index, resource.toStack(1));
+		}
+
+		@Override
+		public int insert(int index, ItemResource resource, int amount, TransactionContext transaction) {
+			if (resource.isEmpty() || amount <= 0)
+				return 0;
+			ItemStack stack = resource.toStack(amount);
+			ItemStack remainder = handler.insertItem(index, stack, true);
+			int inserted = amount - remainder.getCount();
+			if (inserted <= 0)
+				return 0;
+			journals.get(index).updateSnapshots(transaction);
+			handler.insertItem(index, resource.toStack(inserted), false);
+			return inserted;
+		}
+
+		@Override
+		public int extract(int index, ItemResource resource, int amount, TransactionContext transaction) {
+			if (resource.isEmpty() || amount <= 0)
+				return 0;
+			ItemStack current = handler.getStackInSlot(index);
+			if (!resource.matches(current))
+				return 0;
+			ItemStack extracted = handler.extractItem(index, amount, true);
+			if (extracted.isEmpty())
+				return 0;
+			journals.get(index).updateSnapshots(transaction);
+			handler.extractItem(index, extracted.getCount(), false);
+			return extracted.getCount();
+		}
+
+		private class SlotJournal extends SnapshotJournal<ItemStack> {
+			private final int slot;
+
+			private SlotJournal(int slot) {
+				this.slot = slot;
+			}
+
+			@Override
+			protected ItemStack createSnapshot() {
+				return handler.getStackInSlot(slot).copy();
+			}
+
+			@Override
+			protected void revertToSnapshot(ItemStack snapshot) {
+				handler.setStackInSlot(slot, snapshot);
+			}
+		}
+	}
+
+	private class BasinFluidResourceHandler implements ResourceHandler<FluidResource> {
+		private final FluidJournal journal = new FluidJournal();
+
+		@Override
+		public int size() {
+			return outputTank.getTanks().length + inputTank.getTanks().length;
+		}
+
+		@Override
+		public FluidResource getResource(int index) {
+			return FluidResource.of(getTank(index).getTank().getFluid());
+		}
+
+		@Override
+		public long getAmountAsLong(int index) {
+			return getTank(index).getTank().getFluidAmount();
+		}
+
+		@Override
+		public long getCapacityAsLong(int index, FluidResource resource) {
+			if (!resource.isEmpty() && !isValid(index, resource))
+				return 0;
+			return getTank(index).getTank().getCapacity();
+		}
+
+		@Override
+		public boolean isValid(int index, FluidResource resource) {
+			if (resource.isEmpty())
+				return true;
+			return getTank(index).getTank().isFluidValid(resource.toStack(1));
+		}
+
+		@Override
+		public int insert(int index, FluidResource resource, int amount, TransactionContext transaction) {
+			if (resource.isEmpty() || amount <= 0 || isOutputTank(index))
+				return 0;
+			SmartFluidTank tank = getTank(index).getTank();
+			int inserted = tank.fillSilently(resource.toStack(amount), FluidAction.SIMULATE);
+			if (inserted <= 0)
+				return 0;
+			journal.updateSnapshots(transaction);
+			tank.fillSilently(resource.toStack(inserted), FluidAction.EXECUTE);
+			return inserted;
+		}
+
+		@Override
+		public int extract(int index, FluidResource resource, int amount, TransactionContext transaction) {
+			if (resource.isEmpty() || amount <= 0)
+				return 0;
+			SmartFluidTank tank = getTank(index).getTank();
+			FluidStack extracted = tank.drainSilently(resource.toStack(amount), FluidAction.SIMULATE);
+			if (extracted.isEmpty())
+				return 0;
+			journal.updateSnapshots(transaction);
+			tank.drainSilently(extracted, FluidAction.EXECUTE);
+			return extracted.getAmount();
+		}
+
+		private TankSegment getTank(int index) {
+			TankSegment[] outputs = outputTank.getTanks();
+			if (index < outputs.length)
+				return outputs[index];
+			return inputTank.getTanks()[index - outputs.length];
+		}
+
+		private boolean isOutputTank(int index) {
+			return index < outputTank.getTanks().length;
+		}
+
+		private NonNullList<FluidStack> copyContents() {
+			NonNullList<FluidStack> stacks = NonNullList.create();
+			for (int i = 0; i < size(); i++)
+				stacks.add(getTank(i).getTank().getFluid().copy());
+			return stacks;
+		}
+
+		private class FluidJournal extends SnapshotJournal<NonNullList<FluidStack>> {
+			@Override
+			protected NonNullList<FluidStack> createSnapshot() {
+				return copyContents();
+			}
+
+			@Override
+			protected void revertToSnapshot(NonNullList<FluidStack> snapshot) {
+				for (int i = 0; i < snapshot.size(); i++) {
+					getTank(i).getTank().setFluidSilently(snapshot.get(i));
+				}
+			}
+
+			@Override
+			protected void onRootCommit(NonNullList<FluidStack> snapshot) {
+				for (int i = 0; i < size(); i++)
+					getTank(i).onFluidStackChanged();
+			}
+		}
+	}
+}

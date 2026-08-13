@@ -1,0 +1,11 @@
+accessWidener v1 official
+
+# this AW is only used in the common project at compile time.
+# these entries are actual access widenings. make sure these are mirrored in the platform projects.
+accessible class net/minecraft/client/gui/GuiGraphicsExtractor$ScissorStack
+
+# these entries are for widening access in common when both FAPI and neo make something accessible.
+accessible field net/minecraft/client/gui/GuiGraphicsExtractor guiRenderState Lnet/minecraft/client/renderer/state/gui/GuiRenderState;
+accessible field net/minecraft/client/renderer/RenderPipelines GUI_SNIPPET Lcom/mojang/blaze3d/pipeline/RenderPipeline$Snippet;
+accessible field net/minecraft/client/renderer/RenderPipelines DEBUG_FILLED_SNIPPET Lcom/mojang/blaze3d/pipeline/RenderPipeline$Snippet;
+accessible field net/minecraft/client/particle/ParticleEngine resourceManager Lnet/minecraft/client/particle/ParticleResources;

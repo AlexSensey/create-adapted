@@ -1,0 +1,120 @@
+package com.simibubi.create.content.equipment.clipboard;
+
+import java.util.List;
+import java.util.UUID;
+
+import com.mojang.datafixers.util.Pair;
+import com.simibubi.create.AllBlocks;
+import com.simibubi.create.AllDataComponents;
+import com.simibubi.create.content.logistics.AddressEditBoxHelper;
+import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
+import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
+
+import net.createmod.catnip.platform.CatnipServices;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+
+
+public class ClipboardBlockEntity extends SmartBlockEntity {
+	private UUID lastEdit;
+
+	public ClipboardBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+		super(type, pos, state);
+	}
+
+	@Override
+	public void initialize() {
+		super.initialize();
+		updateWrittenState();
+	}
+
+	public void onEditedBy(Player player) {
+		lastEdit = player.getUUID();
+		notifyUpdate();
+		updateWrittenState();
+	}
+
+	@Override
+	public void lazyTick() {
+		super.lazyTick();
+		if (level.isClientSide())
+			CatnipServices.PLATFORM.executeOnClientOnly(() -> this::advertiseToAddressHelper);
+	}
+
+	public void updateWrittenState() {
+		BlockState blockState = getBlockState();
+		if (!AllBlocks.CLIPBOARD.has(blockState))
+			return;
+		if (level.isClientSide())
+			return;
+		boolean isWritten = blockState.getValue(ClipboardBlock.WRITTEN);
+		boolean shouldBeWritten = components().has(AllDataComponents.CLIPBOARD_CONTENT);
+		if (isWritten == shouldBeWritten)
+			return;
+		level.setBlockAndUpdate(worldPosition, blockState.setValue(ClipboardBlock.WRITTEN, shouldBeWritten));
+	}
+
+	@Override
+	public void addBehaviours(List<BlockEntityBehaviour> behaviours) {}
+
+	@Override
+	protected void write(CompoundTag tag, HolderLookup.Provider registries, boolean clientPacket) {
+		super.write(tag, registries, clientPacket);
+
+		if (clientPacket) {
+			DataComponentMap.CODEC.encodeStart(registries.createSerializationContext(NbtOps.INSTANCE), components())
+				.result()
+				.ifPresent(encoded -> tag.put("components", encoded));
+
+			if (lastEdit != null)
+				tag.putString("LastEdit", lastEdit.toString());
+		}
+	}
+
+	@Override
+	protected void read(CompoundTag tag, HolderLookup.Provider registries, boolean clientPacket) {
+		super.read(tag, registries, clientPacket);
+
+		if (clientPacket) {
+			tag.read("components", DataComponentMap.CODEC,
+					registries.createSerializationContext(NbtOps.INSTANCE))
+				.ifPresent(this::setComponents);
+
+			CatnipServices.PLATFORM.executeOnClientOnly(() -> () -> readClientSide(tag));
+		}
+	}
+
+	private void readClientSide(CompoundTag tag) {
+		Minecraft mc = Minecraft.getInstance();
+		if (!(mc.gui.screen() instanceof ClipboardScreen clipboardScreen) || mc.player == null)
+			return;
+		String editor = tag.getStringOr("LastEdit", "");
+		if (!editor.isBlank()) {
+			try {
+				if (UUID.fromString(editor).equals(mc.player.getUUID()))
+					return;
+			} catch (IllegalArgumentException ignored) {
+			}
+		}
+		if (!worldPosition.equals(clipboardScreen.targetedBlock))
+			return;
+		clipboardScreen.reopenWith(
+			components().getOrDefault(AllDataComponents.CLIPBOARD_CONTENT, ClipboardContent.EMPTY));
+	}
+
+	private void advertiseToAddressHelper() {
+		AddressEditBoxHelper.advertiseClipboard(this);
+	}
+
+	@Override
+	public void setComponents(DataComponentMap components) {
+		super.setComponents(components);
+	}
+}

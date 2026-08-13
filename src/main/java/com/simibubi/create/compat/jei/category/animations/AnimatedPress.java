@@ -1,0 +1,52 @@
+package com.simibubi.create.compat.jei.category.animations;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import com.simibubi.create.AllBlocks;
+import com.simibubi.create.AllPartialModels;
+
+import net.createmod.catnip.api.client.animation.AnimationTickHolder;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.core.Direction;
+
+public class AnimatedPress extends AnimatedKinetics {
+
+	private boolean basin;
+
+	public AnimatedPress(boolean basin) {
+		this.basin = basin;
+	}
+	@Override
+	protected void drawAnimation(GuiGraphicsExtractor graphics, int xOffset, int yOffset) {
+		int scale = basin ? 23 : 24;
+		blockElement(shaft(Direction.Axis.Z)).rotateBlock(0, 0, getCurrentAngle()).scale(scale).at(xOffset, yOffset).submit(graphics);
+		blockElement(AllBlocks.MECHANICAL_PRESS.getDefaultState()).scale(scale).at(xOffset, yOffset).submit(graphics);
+		blockElement(AllPartialModels.MECHANICAL_PRESS_HEAD).atLocal(0, -getAnimatedHeadOffset(), 0).scale(scale).at(xOffset, yOffset).submit(graphics);
+		if (basin)
+			blockElement(AllBlocks.BASIN.getDefaultState()).atLocal(0, 1.65f, 0).scale(scale).at(xOffset, yOffset).submit(graphics);
+	}
+
+	@Override
+	protected float getGlobalXRotation() {
+		return -15.5f;
+	}
+
+	@Override
+	protected float getGlobalYRotation() {
+		return 22.5f;
+	}
+
+	private float getAnimatedHeadOffset() {
+		float cycle = (getAnimationTime() - offset * 8) % 30;
+		if (cycle < 10) {
+			float progress = cycle / 10;
+			return -(progress * progress * progress);
+		}
+		if (cycle < 15)
+			return -1;
+		if (cycle < 20)
+			return -1 + (1 - ((20 - cycle) / 5));
+		return 0;
+	}
+
+}

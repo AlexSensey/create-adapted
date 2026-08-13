@@ -1,0 +1,122 @@
+package com.simibubi.create.api.behaviour.movement;
+
+import org.jetbrains.annotations.ApiStatus.ScheduledForRemoval;
+import org.jetbrains.annotations.Nullable;
+
+import com.simibubi.create.api.registry.SimpleRegistry;
+import com.simibubi.create.content.contraptions.behaviour.MovementContext;
+import com.simibubi.create.content.contraptions.render.ActorVisual;
+import com.simibubi.create.content.contraptions.render.ContraptionMatrices;
+import com.simibubi.create.foundation.virtualWorld.VirtualRenderWorld;
+import com.simibubi.create.infrastructure.config.AllConfigs;
+import com.tterrag.registrate.util.nullness.NonNullConsumer;
+
+import dev.engine_room.flywheel.api.visualization.VisualizationContext;
+import net.createmod.catnip.impl.client.render.MultiBufferSource;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.phys.Vec3;
+
+import net.neoforged.neoforge.items.ItemHandlerHelper;
+
+/**
+ * MovementBehaviors, also known as Actors, provide behavior to blocks mounted on contraptions.
+ * Blocks may be associated with a behavior through {@link #REGISTRY}.
+ */
+public interface MovementBehaviour {
+	SimpleRegistry<Block, MovementBehaviour> REGISTRY = SimpleRegistry.create();
+
+	/**
+	 * Creates a consumer that will register a behavior to a block. Useful for Registrate.
+	 */
+	static <B extends Block> NonNullConsumer<? super B> movementBehaviour(MovementBehaviour behaviour) {
+		return b -> REGISTRY.register(b, behaviour);
+	}
+
+	default boolean isActive(MovementContext context) {
+		return !context.disabled;
+	}
+
+	default void tick(MovementContext context) {}
+
+	default void startMoving(MovementContext context) {}
+
+	default void visitNewPosition(MovementContext context, BlockPos pos) {}
+
+	default Vec3 getActiveAreaOffset(MovementContext context) {
+		return Vec3.ZERO;
+	}
+
+	@Nullable
+	default ItemStack canBeDisabledVia(MovementContext context) {
+		Block block = context.state.getBlock();
+		if (block == null)
+			return null;
+		return new ItemStack(block);
+	}
+
+	default void onDisabledByControls(MovementContext context) {
+		cancelStall(context);
+	}
+
+	default boolean mustTickWhileDisabled() {
+		return false;
+	}
+
+	/**
+	 * @deprecated since 6.0.9 - use {@link MovementBehaviour#collectOrDropItem(MovementContext, ItemStack)} instead.
+	 * No behaviours altered, simply a rename to reflect that we do collect items when
+	 * applicable before considering dropping the remainder into the world.
+	 */
+	@ScheduledForRemoval(inVersion = "1.21.1+ Port")
+	@Deprecated(since = "6.0.9", forRemoval = true)
+	default void dropItem(MovementContext context, ItemStack stack) {
+		collectOrDropItem(context, stack);
+	}
+
+	default void collectOrDropItem(MovementContext context, ItemStack stack) {
+		ItemStack remainder;
+		if (AllConfigs.server().kinetics.moveItemsToStorage.get())
+			remainder = ItemHandlerHelper.insertItem(context.contraption.getStorage().getAllItems(), stack, false);
+		else
+			remainder = stack;
+		if (remainder.isEmpty())
+			return;
+
+		// Actors might void items if their positions is undefined
+		Vec3 vec = context.position;
+		if (vec == null)
+			return;
+
+		ItemEntity itemEntity = new ItemEntity(context.world, vec.x, vec.y, vec.z, remainder);
+		itemEntity.setDeltaMovement(context.motion.add(0, 0.5f, 0)
+			.scale(context.world.getRandom()
+				.nextFloat() * .3f));
+		context.world.addFreshEntity(itemEntity);
+	}
+
+	default void onSpeedChanged(MovementContext context, Vec3 oldMotion, Vec3 motion) {}
+
+	default void stopMoving(MovementContext context) {}
+
+	default void cancelStall(MovementContext context) {
+		context.stall = false;
+	}
+
+	default void writeExtraData(MovementContext context) {}
+
+	default boolean disableBlockEntityRendering() {
+		return false;
+	}
+
+	default void renderInContraption(MovementContext context, VirtualRenderWorld renderWorld,
+		ContraptionMatrices matrices, MultiBufferSource buffer) {}
+
+	@Nullable
+	default ActorVisual createVisual(VisualizationContext visualizationContext, VirtualRenderWorld simulationWorld,
+		MovementContext movementContext) {
+		return null;
+	}
+}

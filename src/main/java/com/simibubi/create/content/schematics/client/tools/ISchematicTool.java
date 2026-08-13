@@ -1,0 +1,26 @@
+package com.simibubi.create.content.schematics.client.tools;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+
+import net.createmod.catnip.api.client.render.SuperRenderTypeBuffer;
+import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.world.phys.Vec3;
+
+public interface ISchematicTool {
+
+	public void init();
+	public void updateSelection();
+
+	public boolean handleRightClick();
+	public boolean handleMouseWheel(double delta);
+
+	public void renderTool(PoseStack ms, SuperRenderTypeBuffer buffer, Vec3 camera);
+	public void renderOverlay(Gui gui, GuiGraphicsExtractor graphics, float partialTicks, int width, int height);
+	public void renderOnSchematic(PoseStack ms, SuperRenderTypeBuffer buffer);
+
+	default void submitTool(PoseStack ms, SubmitNodeCollector collector, CameraRenderState cameraRenderState) {}
+
+}

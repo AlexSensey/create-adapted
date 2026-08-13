@@ -1,0 +1,1426 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.ow2.asm:asm:9.10.1")
+        classpath("org.ow2.asm:asm-commons:9.10.1")
+    }
+}
+
+plugins {
+    id("idea")
+    id("eclipse")
+    id("maven-publish")
+    id("net.kyori.blossom") version "2.2.0" // https://github.com/KyoriPowered/blossom
+    id("dev.ithundxr.silk") version "1.0.1" // https://github.com/ithundxr/silk
+    id("net.neoforged.moddev") version "2.0.141" // https://projects.neoforged.net/neoforged/ModDevGradle
+    id("me.modmuss50.mod-publish-plugin") version "1.1.0" // https://github.com/modmuss50/mod-publish-plugin
+}
+
+boolean dev = System.getenv("RELEASE") == null || System.getenv("RELEASE") == "false"
+String buildNumber = System.getenv("BUILD_NUMBER")
+String gitHash = calculateGitHash() + (hasUnstaged() ? "-modified" : "")
+
+group = "com.simibubi.create"
+version = mod_version + (dev && buildNumber != null ? "-${buildNumber}" : "")
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+println("Java: ${System.getProperty("java.version")}, JVM: ${System.getProperty("java.vm.version")} (${System.getProperty("java.vendor")}), Arch: ${System.getProperty("os.arch")}")
+
+idea {
+    module {
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
+
+neoForge {
+    version = neo_version
+
+    accessTransformers {
+        publish(file("src/main/resources/META-INF/accesstransformer.cfg"))
+    }
+
+    if (parchment_version != "none") {
+        parchment {
+            minecraftVersion = parchment_minecraft_version == "same" ? minecraft_version : parchment_minecraft_version
+            mappingsVersion = parchment_version
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+
+    runs {
+        configureEach {
+            systemProperty("forge.logging.markers", "REGISTRIES")
+            jvmArgument("-XX:+IgnoreUnrecognizedVMOptions")
+            jvmArgument("-XX:+AllowEnhancedClassRedefinition")
+            //jvmArgument("-XX:-OmitStackTraceInFastThrow") // uncomment when you get exceptions with null messages etc
+            //jvmArgument("-XX:+UnlockCommercialFeatures") // uncomment for profiling
+
+            systemProperty("mixin.debug.verbose", "true")
+            systemProperty("mixin.debug.export", "true")
+
+            systemProperty("neoforge.enabledGameTestNamespaces", mod_id as String)
+
+            loggingConfigFile = project.file("log4j.xml")
+        }
+
+        client {
+            client()
+        }
+
+        server {
+            server()
+
+            gameDirectory = project.file("run/server")
+
+            programArgument("--nogui")
+        }
+
+        data {
+            // Minecraft 26.2 split data generation into clientData and serverData.
+            // Create's recipe/tag providers are server-side, while Registrate can still
+            // emit the requested client resources when --all is present.
+            type = "serverData"
+
+            programArguments.addAll(
+                "--mod", mod_id as String,
+                "--all",
+				// Until the real 26.2 providers are restored, keep the compatibility
+				// run away from the checked-in generated resources: an empty provider
+				// set would otherwise delete every existing file as stale.
+                "--output", file("build/generated/runData/").getAbsolutePath(),
+                "--existing", file("src/main/resources/").getAbsolutePath()
+            )
+        }
+
+        gameTestServer {
+            type = "gameTestServer"
+        }
+    }
+}
+
+repositories {
+    maven { url = "https://maven.createmod.net" } // Ponder, Flywheel
+    maven { url = "https://maven.ithundxr.dev/snapshots" } // Registrate
+    maven { url = "https://maven.blamejared.com" } // JEI, Vazkii's Mods
+    maven { url = "https://maven.theillusivec4.top/" } // Curios API
+    maven { url = "https://maven.squiddev.cc" } // CC: Tweaked
+    maven { url = "https://www.cursemaven.com" }
+    maven { url = "https://api.modrinth.com/maven" }
+    maven { url = "https://maven.ftb.dev/releases" } // FTB Mods
+    maven { url = "https://maven.architectury.dev" } // Arch API
+    // NeoForge config api port, needed by ponder
+    maven { url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven" }
+    maven {
+        url = "https://jm.gserv.me/repository/maven-public" // JourneyMap
+        content {
+            includeGroup "info.journeymap"
+            includeGroup "mysticdrew"
+        }
+    }
+    maven { url "https://chocolateminecraft.com/maven" } // Xaero
+}
+
+configurations {
+    localImplementation
+
+    runtimeClasspath.extendsFrom(localImplementation)
+    compileClasspath.extendsFrom(localImplementation)
+
+    runtimeClasspath.extendsFrom(localRuntimeOnly)
+}
+
+dependencies {
+    // Required dependencies
+    jarJar(api("com.tterrag.registrate:Registrate:$registrate_version"))
+
+    if (providers.gradleProperty("useRealFlywheel").orNull == "true") {
+        compileOnlyApi(files(layout.buildDirectory.file("flywheel-runtime/flywheel-neoforge-26.2-${flywheel_version}.jar")))
+    } else {
+        compileOnlyApi("dev.engine-room.flywheel:flywheel-neoforge-api-$minecraft_dependency_version:$flywheel_version")
+        jarJar(runtimeOnly("dev.engine-room.flywheel:flywheel-neoforge-$minecraft_dependency_version:$flywheel_version") {
+            version {
+                strictly "[${flywheel_version},2.0)"
+                prefer flywheel_version
+            }
+        })
+    }
+
+    jarJar(api("net.createmod.ponder:ponder-neoforge:$ponder_version+mc$minecraft_dependency_version") {
+        version {
+            strictly "[$ponder_version+mc$minecraft_dependency_version,)"
+            prefer "$ponder_version+mc$minecraft_dependency_version"
+        }
+    })
+
+    // Local dependencies - not published to consumers
+    if (providers.gradleProperty("useRealFlywheel").orNull != "true") {
+        localRuntimeOnly("dev.engine-room.vanillin:vanillin-neoforge-$minecraft_dependency_version:$vanillin_version")
+    }
+
+    localImplementation("mezz.jei:jei-$minecraft_dependency_version-neoforge:$jei_version")
+
+    compileOnly("top.theillusivec4.curios:curios-neoforge:$curios_version:api")
+
+    compileOnly("maven.modrinth:sodium:mc$minecraft_dependency_version-$sodium_version-neoforge")
+
+    if (cc_tweaked_enable.toBoolean()) {
+        compileOnly("cc.tweaked:cc-tweaked-$minecraft_dependency_version-core-api:$cc_tweaked_version")
+        compileOnly("cc.tweaked:cc-tweaked-$minecraft_dependency_version-forge-api:$cc_tweaked_version")
+        if (cc_tweaked_runtime_enable.toBoolean()) {
+            localRuntimeOnly("cc.tweaked:cc-tweaked-$minecraft_dependency_version-forge:$cc_tweaked_version")
+        }
+    }
+
+    compileOnly("maven.modrinth:farmers-delight:${farmers_delight_version}")
+    if (farmers_delight_enable.toBoolean()) {
+        localImplementation("maven.modrinth:farmers-delight:${farmers_delight_version}")
+    }
+
+    compileOnly("dev.ftb.mods:ftb-chunks-neoforge:2101.1.1")
+    compileOnly("dev.ftb.mods:ftb-teams-neoforge:2101.1.0")
+    compileOnly("dev.ftb.mods:ftb-library-neoforge:2101.1.3")
+
+    compileOnly("maven.modrinth:journeymap:26.2-6.0.4+neoforge")
+    compileOnly("info.journeymap:journeymap-api-neoforge:26.2-2.0.0-SNAPSHOT") {
+        exclude(group: "curse.maven") // Pulls in a old version of journey map which is for forge
+    }
+
+    compileOnly("xaero.lib:xaerolib-neoforge-1.21:1.0.42")
+    compileOnly("curse.maven:xaeros-world-map-317780:7401095")
+}
+
+sourceSets.main {
+    java {
+        // Temporary 26.2 port step: CC:Tweaked implementation API changed; keep the public hooks
+        // compiling while core Create is ported first.
+        exclude("com/simibubi/create/compat/computercraft/implementation/**")
+        // Temporary 26.2 port step: JEI 30 changed category/rendering APIs. Keep only tiny core-facing
+        // stubs until the optional JEI plugin is ported.
+        exclude("com/simibubi/create/compat/jei/category/*.java")
+        // Blueprint transfer support has been ported to JEI 30.
+        exclude("com/simibubi/create/compat/jei/EmptyBackground.java")
+        // Ghost ingredient support has been ported to JEI 30.
+        exclude("com/simibubi/create/compat/jei/ItemIcon.java")
+        // Potion fluid subtypes have been ported to JEI 30.
+        exclude("com/simibubi/create/compat/jei/ScreenResourceWrapper.java")
+        // Create screen spacing and Stock Keeper JEI GUI handlers have been ported to JEI 30.
+        exclude("com/simibubi/create/compat/trainmap/FTBChunksTrainMap.java")
+        exclude("com/simibubi/create/infrastructure/gametest/**")
+		// The 26.2 server-data bridge restores registry entries, registry tags and
+		// data maps. Client/wiki/lang providers remain isolated for later ports.
+        exclude("com/simibubi/create/infrastructure/command/CameraAngleCommand.java")
+        exclude("com/simibubi/create/infrastructure/command/CameraDistanceCommand.java")
+        exclude("com/simibubi/create/infrastructure/command/ClearBufferCacheCommand.java")
+        exclude("com/simibubi/create/infrastructure/command/CloneCommand.java")
+        exclude("com/simibubi/create/infrastructure/command/ConfigureConfigCommand.java")
+        exclude("com/simibubi/create/infrastructure/command/CreateTestCommand.java")
+        exclude("com/simibubi/create/infrastructure/command/DebugHatsCommand.java")
+        exclude("com/simibubi/create/infrastructure/command/DebugInfoCommand.java")
+        exclude("com/simibubi/create/infrastructure/command/DebugValueCommand.java")
+        exclude("com/simibubi/create/infrastructure/command/FixLightingCommand.java")
+        exclude("com/simibubi/create/infrastructure/command/HighlightCommand.java")
+        exclude("com/simibubi/create/infrastructure/command/HighlightPacket.java")
+        exclude("com/simibubi/create/infrastructure/command/KillTPSCommand.java")
+        exclude("com/simibubi/create/infrastructure/command/ReplaceInCommandBlocksCommand.java")
+        exclude("com/simibubi/create/infrastructure/command/ToggleDebugCommand.java")
+        // Temporary 26.2 port step: datagen provider APIs changed significantly. Keep shared tag
+        // constants like CommonMetal/Mods compiling, but skip generator implementations for now.
+        exclude("com/simibubi/create/infrastructure/data/CreateDatagen.java")
+        exclude("com/simibubi/create/infrastructure/data/CreateWikiBlockInfoProvider.java")
+		// Standard crafting, mechanical crafting and sequenced assembly still need
+		// their dedicated 26.2 runners. Processing recipe generators are active.
+        exclude("com/simibubi/create/foundation/mixin/BuiltInRegistriesMixin.java")
+        exclude("com/simibubi/create/foundation/mixin/CustomItemUseEffectsMixin.java")
+        exclude("**/package-info.java")
+    }
+
+    resources {
+        srcDir("src/generated/resources")
+        exclude(".cache/")
+        exclude("data/create/.wiki")
+    }
+
+    blossom.javaSources {
+        property("version", mod_version)
+        property("gitCommit", gitHash.toString())
+    }
+}
+
+// Compile-only migration probe for the real Flywheel sources. Keeping this in a
+// separate source set lets us port the 1.21.1 renderer to 26.2 without replacing
+// the stable runtime stubs until the backend can actually build and start.
+sourceSets.create("flywheelProbe") {
+    java {
+        srcDirs(
+                "Flywheel/common/src/api/java",
+                "Flywheel/common/src/lib/java",
+                "Flywheel/common/src/backend/java",
+                "Flywheel/common/src/main/java",
+                "Flywheel/neoforge/src/api/java",
+                "Flywheel/neoforge/src/lib/java",
+                "Flywheel/neoforge/src/backend/java",
+                "Flywheel/neoforge/src/main/java"
+        )
+        exclude("**/package-info.java")
+        exclude("**/impl/compat/EmbeddiumCompat.java")
+        exclude("**/backend/mixin/GlStateManagerMixin.java")
+        exclude("**/impl/mixin/LevelRendererMixin.java")
+        exclude("**/impl/mixin/fix/FixFabulousDepthMixin.java")
+        exclude("**/impl/mixin/neoforge/ModelBlockRendererMixin.java")
+    }
+
+    resources {
+        srcDirs(
+                "Flywheel/common/src/lib/resources",
+                "Flywheel/common/src/backend/resources",
+                "Flywheel/common/src/main/resources",
+                "Flywheel/neoforge/src/main/resources"
+        )
+    }
+}
+
+configurations.flywheelProbeCompileClasspath.extendsFrom(configurations.compileClasspath)
+configurations.flywheelProbeAnnotationProcessor.extendsFrom(configurations.annotationProcessor)
+
+tasks.named("processFlywheelProbeResources", ProcessResources).configure {
+    filesMatching("META-INF/neoforge.mods.toml") {
+        expand(
+                mod_license: "MIT",
+                mod_issues: "https://github.com/Engine-Room/Flywheel/issues",
+                mod_homepage: "https://github.com/Engine-Room/Flywheel",
+                flywheel_id: "flywheel",
+                flywheel_name: "Flywheel",
+                flywheel_version: flywheel_version,
+                flywheel_description: "An overhauled entity and block entity rendering API.",
+                minecraft_maven_version_range: "[26.2,26.3)",
+                neoforge_version_range: "[26.2.0.0,)"
+        )
+    }
+}
+
+tasks.register("flywheelRuntimeJar", Jar) {
+    group = "build"
+    description = "Builds the isolated Flywheel 26.2 runtime port for Prism testing."
+    archiveBaseName = "flywheel-neoforge-26.2"
+    archiveVersion = flywheel_version
+    destinationDirectory = layout.buildDirectory.dir("flywheel-runtime")
+    from(sourceSets.flywheelProbe.output)
+    from("Flywheel/LICENSE.md") {
+        rename { "LICENSE_FLYWHEEL.md" }
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// The adapted Flywheel and Catnip builds are MIT licensed, so the public
+// edition embeds them as standard NeoForge Jar-in-Jar dependencies. Ponder and
+// Registrate are already supplied by the normal jarJar configuration.
+tasks.register("prepareEmbeddedFlywheel") {
+    dependsOn(tasks.named("jarJar"), tasks.named("flywheelRuntimeJar"))
+
+    doLast {
+        def jarJarDir = layout.buildDirectory.dir("generated/jarJar/META-INF/jarjar").get().asFile
+        def flywheelJar = tasks.named("flywheelRuntimeJar", Jar).get().archiveFile.get().asFile
+        def embeddedName = flywheelJar.name
+        copy {
+            from(flywheelJar)
+            into(jarJarDir)
+        }
+
+        def metadataFile = new File(jarJarDir, "metadata.json")
+        def metadata = new groovy.json.JsonSlurper().parse(metadataFile)
+        metadata.jars.removeAll {
+            it.identifier?.group == "dev.engine-room.flywheel" && it.identifier?.artifact == "flywheel-neoforge-26.2"
+        }
+        metadata.jars.add([
+                identifier: [
+                        group   : "dev.engine-room.flywheel",
+                        artifact: "flywheel-neoforge-26.2"
+                ],
+                version   : [
+                        range          : flywheel_version_range,
+                        artifactVersion: flywheel_version
+                ],
+                path      : "META-INF/jarjar/${embeddedName}".toString(),
+                isObfuscated: false
+        ])
+
+		def catnipJar = fileTree("Ponder/catnip/neoforge/build/libs").matching {
+			include("catnip-neoforge-*.jar")
+		}.singleFile
+		copy {
+			from(catnipJar)
+			into(jarJarDir)
+		}
+		def catnipVersion = catnipJar.name
+			.substring("catnip-neoforge-".length(), catnipJar.name.length() - ".jar".length())
+		metadata.jars.removeAll {
+			it.identifier?.group == "net.createmod.catnip" && it.identifier?.artifact == "catnip-neoforge-26.2"
+		}
+		metadata.jars.add([
+				identifier: [
+						group   : "net.createmod.catnip",
+						artifact: "catnip-neoforge-26.2"
+				],
+				version   : [
+						range          : "[${catnipVersion}]".toString(),
+						artifactVersion: catnipVersion
+				],
+				path      : "META-INF/jarjar/${catnipJar.name}".toString(),
+				isObfuscated: false
+		])
+        metadataFile.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(metadata)) + "\n"
+    }
+}
+
+if (providers.gradleProperty("useRealFlywheel").orNull == "true") {
+    tasks.named("compileJava").configure {
+        dependsOn(tasks.named("flywheelRuntimeJar"))
+    }
+}
+
+var generateItemModelDefinitions = tasks.register("generateItemModelDefinitions") {
+    def outputDir = layout.buildDirectory.dir("generated/createItemModelDefinitions")
+    def itemModels = files(
+            fileTree("src/main/resources/assets/create/models/item") {
+                include("*.json")
+            },
+            fileTree("src/generated/resources/assets/create/models/item") {
+                include("*.json")
+            })
+
+    inputs.files(itemModels)
+    outputs.dir(outputDir)
+
+    doLast {
+        def targetDir = outputDir.get().asFile.toPath().resolve("assets/create/items").toFile()
+        def generatedModelDir = outputDir.get().asFile.toPath().resolve("assets/create/models/item").toFile()
+        delete(targetDir)
+        delete(generatedModelDir)
+        targetDir.mkdirs()
+        generatedModelDir.mkdirs()
+
+        def flatItemTextures = [
+                schematic          : "create:item/schematic",
+                empty_schematic    : "create:item/empty_schematic",
+                schematic_and_quill: "create:item/schematic_and_quill"
+        ]
+
+        itemModels.files.findAll { it.name.endsWith(".json") }.each { modelFile ->
+            def itemName = modelFile.name.substring(0, modelFile.name.length() - ".json".length())
+            def modelLocation = flatItemTextures.containsKey(itemName)
+                    ? "create:item/${itemName}_flat".toString()
+                    : "create:item/${itemName}".toString()
+            def modelDefinition = [
+                    model: [
+                            type : "minecraft:model",
+                            model: modelLocation
+                    ]
+            ]
+
+            def sourceModel = new groovy.json.JsonSlurper().parse(modelFile)
+            def trimMaterials = [
+                    "0.1": "minecraft:quartz",
+                    "0.2": "minecraft:iron",
+                    "0.3": "minecraft:netherite",
+                    "0.4": "minecraft:redstone",
+                    "0.5": "minecraft:copper",
+                    "0.6": "minecraft:gold",
+                    "0.7": "minecraft:emerald",
+                    "0.8": "minecraft:diamond",
+                    "0.9": "minecraft:lapis",
+                    "1.0": "minecraft:amethyst"
+            ]
+            def trimOverrides = sourceModel.overrides?.findAll {
+                it.predicate?.get("minecraft:trim_type") != null
+            }
+            if (trimOverrides) {
+                def cases = trimOverrides.collect {
+                    def predicate = it.predicate.get("minecraft:trim_type").toString()
+                    [
+                            when: trimMaterials[predicate],
+                            model: [type: "minecraft:model", model: it.model]
+                    ]
+                }.findAll { it.when != null }
+                def resinModel = "create:item/${itemName}_resin_trim".toString()
+                cases.add([when: "minecraft:resin", model: [type: "minecraft:model", model: resinModel]])
+                modelDefinition = [
+                        model: [
+                                type: "minecraft:select",
+                                property: "minecraft:trim_material",
+                                cases: cases,
+                                fallback: [type: "minecraft:model", model: modelLocation]
+                        ]
+                ]
+            }
+            new File(targetDir, modelFile.name).text =
+                    groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(modelDefinition)) + "\n"
+
+            if (flatItemTextures.containsKey(itemName)) {
+                def flatModel = [
+                        parent  : "minecraft:item/generated",
+                        textures: [
+                                layer0: flatItemTextures[itemName]
+                        ]
+                ]
+                new File(generatedModelDir, "${itemName}_flat.json").text =
+                        groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(flatModel)) + "\n"
+            }
+        }
+    }
+}
+
+sourceSets.main.resources.srcDir(generateItemModelDefinitions)
+
+jar {
+	// This is the isolated public-distribution project. Upstream Create client
+	// assets are supplied by the player at runtime. Keep only the small JSON
+	// compatibility layer authored/generated for Minecraft 26.2.
+	eachFile { details ->
+		def path = details.path.replace('\\', '/')
+		if (!path.startsWith("assets/"))
+			return
+
+		def isItemDefinition = path.startsWith("assets/create/items/") && path.endsWith(".json")
+		def isEquipmentDefinition = path.startsWith("assets/create/equipment/") && path.endsWith(".json")
+		def isGeneratedFlatModel = path == "assets/create/models/item/schematic_flat.json"
+			|| path == "assets/create/models/item/empty_schematic_flat.json"
+			|| path == "assets/create/models/item/schematic_and_quill_flat.json"
+		def isAtlasCompatibility = path == "assets/minecraft/atlases/blocks.json"
+			|| path == "assets/minecraft/atlases/particles.json"
+			|| path == "assets/minecraft/atlases/armor_trims.json"
+		if (!isItemDefinition && !isEquipmentDefinition && !isGeneratedFlatModel && !isAtlasCompatibility)
+			details.exclude()
+	}
+    exclude("net/minecraft/**")
+    exclude("net/createmod/**")
+    exclude("net/neoforged/fml/**")
+    exclude("net/neoforged/neoforge/common/**")
+    exclude("net/neoforged/neoforge/registries/**")
+    exclude("net/neoforged/neoforge/client/event/**")
+    exclude("net/neoforged/neoforge/client/ChunkRenderTypeSet*.class")
+    exclude("net/neoforged/neoforge/client/model/BakedModelWrapper*.class")
+    exclude("net/neoforged/neoforge/client/model/QuadTransformers*.class")
+    exclude("com/mojang/**")
+    from("LICENSE.md") {
+        rename { "${mod_name}_${it}" }
+    }
+	from("EXTERNAL_ASSETS.md")
+}
+
+def remapResourceLocationClassReferences = { File jarFile, boolean includeResourceLocations = true ->
+    if (!jarFile.exists())
+        return
+
+    File tmpJar = new File(jarFile.parentFile, jarFile.name + ".rl-remap.tmp")
+    boolean remapped = false
+    def mappings = [
+            "net/minecraft/data/tags/TagsProvider\$TagAppender": "net/minecraft/data/tags/TagAppender"
+    ]
+    if (includeResourceLocations) {
+        mappings.put("net/minecraft/resources/ResourceLocation", "net/minecraft/resources/Identifier")
+        mappings.put("net/minecraft/world/ItemInteractionResult",
+                "com/simibubi/create/foundation/utility/LegacyItemInteractionResult")
+    }
+    def remapper = new org.objectweb.asm.commons.SimpleRemapper(mappings)
+
+    new java.util.zip.ZipInputStream(new FileInputStream(jarFile)).withCloseable { input ->
+        new java.util.zip.ZipOutputStream(new FileOutputStream(tmpJar)).withCloseable { output ->
+            java.util.zip.ZipEntry entry
+            while ((entry = input.nextEntry) != null) {
+                output.putNextEntry(new java.util.zip.ZipEntry(entry.name))
+                def entryBytes = new ByteArrayOutputStream()
+                byte[] buffer = new byte[8192]
+                int read
+                while ((read = input.read(buffer)) != -1)
+                    entryBytes.write(buffer, 0, read)
+                byte[] bytes = entryBytes.toByteArray()
+
+                if (entry.name.endsWith(".class")
+                        && !entry.name.startsWith("net/minecraft/")
+                        && !entry.name.startsWith("net/neoforged/neoforge/client/model/generators/")
+                        && !entry.name.startsWith("com/mojang/")) {
+                    def reader = new org.objectweb.asm.ClassReader(bytes)
+                    def writer = new org.objectweb.asm.ClassWriter(reader, 0)
+                    def visitor = new org.objectweb.asm.commons.ClassRemapper(writer, remapper)
+                    reader.accept(visitor, 0)
+                    bytes = writer.toByteArray()
+                    remapped = true
+                }
+
+                output.write(bytes)
+                output.closeEntry()
+            }
+        }
+    }
+
+    if (remapped) {
+        if (!jarFile.delete())
+            throw new GradleException("Could not replace ${jarFile}")
+        if (!tmpJar.renameTo(jarFile))
+            throw new GradleException("Could not move remapped jar to ${jarFile}")
+    } else {
+        tmpJar.delete()
+    }
+}
+
+def patchRegistrateRegistryEntry = { File registrateJar ->
+    if (!registrateJar.exists())
+        return
+
+    File tmpJar = new File(registrateJar.parentFile, registrateJar.name + ".tmp")
+    boolean patched = false
+
+    new java.util.zip.ZipInputStream(new FileInputStream(registrateJar)).withCloseable { input ->
+        new java.util.zip.ZipOutputStream(new FileOutputStream(tmpJar)).withCloseable { output ->
+            java.util.zip.ZipEntry entry
+            while ((entry = input.nextEntry) != null) {
+                output.putNextEntry(new java.util.zip.ZipEntry(entry.name))
+                def entryBytes = new ByteArrayOutputStream()
+                byte[] buffer = new byte[8192]
+                int read
+                while ((read = input.read(buffer)) != -1)
+                    entryBytes.write(buffer, 0, read)
+                byte[] bytes = entryBytes.toByteArray()
+
+                if (entry.name.endsWith(".class")) {
+                    def reader = new org.objectweb.asm.ClassReader(bytes)
+                    def writer = new org.objectweb.asm.ClassWriter(reader, org.objectweb.asm.ClassWriter.COMPUTE_MAXS)
+                    def visitor = new org.objectweb.asm.ClassVisitor(org.objectweb.asm.Opcodes.ASM9, writer) {
+                        @Override
+                        org.objectweb.asm.MethodVisitor visitMethod(int access, String name, String descriptor,
+                                                                    String signature, String[] exceptions) {
+                            if (entry.name == "com/tterrag/registrate/providers/ProviderType.class"
+                                    && name == "<clinit>") {
+                                patched = true
+                                def methodVisitor = super.visitMethod(access, name, descriptor, signature, exceptions)
+                                methodVisitor.visitCode()
+                                def emitNoopProviderType = { String fieldName, String providerName ->
+                                    methodVisitor.visitLdcInsn(providerName)
+                                    methodVisitor.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKESTATIC,
+                                            "com/simibubi/create/foundation/data/Registrate26Compat",
+                                            "noopProviderType",
+                                            "(Ljava/lang/String;)Lcom/tterrag/registrate/providers/ProviderType;",
+                                            false)
+                                    methodVisitor.visitFieldInsn(org.objectweb.asm.Opcodes.PUTSTATIC,
+                                            "com/tterrag/registrate/providers/ProviderType",
+                                            fieldName,
+                                            "Lcom/tterrag/registrate/providers/ProviderType;")
+                                }
+								def emitCompatProviderType = { String fieldName, String methodName ->
+									methodVisitor.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKESTATIC,
+										"com/simibubi/create/foundation/data/Registrate26Compat",
+										methodName,
+										"()Lcom/tterrag/registrate/providers/ProviderType;",
+										false)
+									methodVisitor.visitFieldInsn(org.objectweb.asm.Opcodes.PUTSTATIC,
+										"com/tterrag/registrate/providers/ProviderType",
+										fieldName,
+										"Lcom/tterrag/registrate/providers/ProviderType;")
+								}
+                                emitNoopProviderType("ADVANCEMENT", "advancement")
+								emitNoopProviderType("DYNAMIC", "dynamic")
+								emitNoopProviderType("DATA_MAP", "data_map")
+								emitNoopProviderType("RECIPE", "recipe")
+                                emitNoopProviderType("LOOT", "loot")
+								emitCompatProviderType("BLOCK_TAGS", "blockTagsProviderType")
+                                emitNoopProviderType("ENCHANTMENT_TAGS", "tags/enchantment")
+								emitCompatProviderType("ITEM_TAGS", "itemTagsProviderType")
+								emitCompatProviderType("FLUID_TAGS", "fluidTagsProviderType")
+								emitCompatProviderType("ENTITY_TAGS", "entityTagsProviderType")
+                                emitNoopProviderType("GENERIC_SERVER", "registrate_generic_server_provider")
+								emitNoopProviderType("BLOCKSTATE", "blockstate")
+                                emitNoopProviderType("ITEM_MODEL", "item_model")
+								emitCompatProviderType("LANG", "langProviderType")
+                                emitNoopProviderType("GENERIC_CLIENT", "registrate_generic_client_provider")
+                                methodVisitor.visitInsn(org.objectweb.asm.Opcodes.RETURN)
+                                methodVisitor.visitMaxs(1, 0)
+                                methodVisitor.visitEnd()
+                                return null
+                            }
+                            def methodVisitor = super.visitMethod(access, name, descriptor, signature, exceptions)
+                            return new org.objectweb.asm.MethodVisitor(org.objectweb.asm.Opcodes.ASM9, methodVisitor) {
+                                int localOneStores = 0
+								boolean defaultCreativeTabIdentifierConverted = false
+
+                                private void emitRegistryKey(String registryOwner, String propertiesOwner, String setIdDescriptor) {
+                                    super.visitVarInsn(org.objectweb.asm.Opcodes.ALOAD, 1)
+                                    super.visitFieldInsn(org.objectweb.asm.Opcodes.GETSTATIC,
+                                            "net/minecraft/core/registries/Registries",
+                                            registryOwner,
+                                            "Lnet/minecraft/resources/ResourceKey;")
+                                    super.visitVarInsn(org.objectweb.asm.Opcodes.ALOAD, 0)
+                                    super.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKEVIRTUAL,
+                                            "com/tterrag/registrate/builders/AbstractBuilder",
+                                            "getOwner",
+                                            "()Lcom/tterrag/registrate/AbstractRegistrate;",
+                                            false)
+                                    super.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKEVIRTUAL,
+                                            "com/tterrag/registrate/AbstractRegistrate",
+                                            "getModid",
+                                            "()Ljava/lang/String;",
+                                            false)
+                                    super.visitVarInsn(org.objectweb.asm.Opcodes.ALOAD, 0)
+                                    super.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKEVIRTUAL,
+                                            "com/tterrag/registrate/builders/AbstractBuilder",
+                                            "getName",
+                                            "()Ljava/lang/String;",
+                                            false)
+                                    super.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKESTATIC,
+                                            "net/minecraft/resources/ResourceLocation",
+                                            "fromNamespaceAndPath",
+                                            "(Ljava/lang/String;Ljava/lang/String;)Lnet/minecraft/resources/ResourceLocation;",
+                                            false)
+                                    super.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKESTATIC,
+                                            "net/minecraft/resources/ResourceKey",
+                                            "create",
+                                            "(Lnet/minecraft/resources/ResourceKey;Lnet/minecraft/resources/ResourceLocation;)Lnet/minecraft/resources/ResourceKey;",
+                                            false)
+                                    super.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKEVIRTUAL,
+                                            propertiesOwner,
+                                            "setId",
+                                            setIdDescriptor,
+                                            false)
+                                    super.visitInsn(org.objectweb.asm.Opcodes.POP)
+                                }
+
+                                @Override
+                                void visitVarInsn(int opcode, int varIndex) {
+                                    super.visitVarInsn(opcode, varIndex)
+                                    if (opcode == org.objectweb.asm.Opcodes.ASTORE && varIndex == 1) {
+                                        localOneStores++
+                                        if (entry.name == "com/tterrag/registrate/builders/BlockBuilder.class"
+                                                && name == "createEntry"
+                                                && descriptor == "()Lnet/minecraft/world/level/block/Block;"
+                                                && localOneStores == 2) {
+                                            patched = true
+                                            emitRegistryKey("BLOCK",
+                                                    "net/minecraft/world/level/block/state/BlockBehaviour\$Properties",
+                                                    "(Lnet/minecraft/resources/ResourceKey;)Lnet/minecraft/world/level/block/state/BlockBehaviour\$Properties;")
+                                        }
+                                        if (entry.name == "com/tterrag/registrate/builders/ItemBuilder.class"
+                                                && name == "createEntry"
+                                                && descriptor == "()Lnet/minecraft/world/item/Item;"
+                                                && localOneStores == 2) {
+                                            patched = true
+                                            emitRegistryKey("ITEM",
+                                                    "net/minecraft/world/item/Item\$Properties",
+                                                    "(Lnet/minecraft/resources/ResourceKey;)Lnet/minecraft/world/item/Item\$Properties;")
+                                        }
+                                    }
+                                }
+
+                                @Override
+                                void visitLdcInsn(Object value) {
+									if (entry.name == "com/tterrag/registrate/AbstractRegistrate.class"
+											&& value instanceof org.objectweb.asm.Type
+											&& value.descriptor == "Lnet/neoforged/neoforge/data/event/GatherDataEvent;") {
+										patched = true
+										// GatherDataEvent is abstract in NeoForge 26.2. The configured
+										// runData task is the server-data run, so subscribe Registrate to
+										// the concrete server event.
+										super.visitLdcInsn(org.objectweb.asm.Type.getType(
+												"Lnet/neoforged/neoforge/data/event/GatherDataEvent\$Server;"))
+										return
+									}
+                                    if (entry.name == "com/tterrag/registrate/providers/ProviderType.class"
+                                            && name == "<clinit>"
+                                            && (value == "blockstate" || value == "item_model")) {
+                                        patched = true
+                                        super.visitLdcInsn(value)
+                                        localOneStores = -1000
+                                        return
+                                    }
+                                    super.visitLdcInsn(value)
+                                }
+
+                                @Override
+                                void visitInvokeDynamicInsn(String dynamicName, String dynamicDescriptor,
+                                                            org.objectweb.asm.Handle bootstrapMethodHandle,
+                                                            Object... bootstrapMethodArguments) {
+                                    if (entry.name == "com/tterrag/registrate/providers/ProviderType.class"
+                                            && name == "<clinit>"
+                                            && localOneStores == -1000
+                                            && dynamicName == "create"
+                                            && dynamicDescriptor == "()Lcom/tterrag/registrate/providers/ProviderType\$DependencyAwareProviderType;") {
+                                        patched = true
+                                        super.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKESTATIC,
+                                                "com/simibubi/create/foundation/data/Registrate26Compat",
+                                                "noopProviderType",
+                                                "(Ljava/lang/String;)Lcom/tterrag/registrate/providers/ProviderType;",
+                                                false)
+                                        localOneStores = -1001
+                                        return
+                                    }
+                                    super.visitInvokeDynamicInsn(dynamicName, dynamicDescriptor, bootstrapMethodHandle, bootstrapMethodArguments)
+                                }
+
+                                @Override
+                                void visitFieldInsn(int opcode, String owner, String fieldName, String fieldDescriptor) {
+                                    if (opcode == org.objectweb.asm.Opcodes.GETSTATIC
+                                            && owner == "net/neoforged/fml/loading/FMLEnvironment"
+                                            && fieldName == "dist"
+                                            && fieldDescriptor == "Lnet/neoforged/api/distmarker/Dist;") {
+                                        patched = true
+                                        super.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKESTATIC,
+                                                "net/neoforged/fml/loading/FMLEnvironment",
+                                                "getDist",
+                                                "()Lnet/neoforged/api/distmarker/Dist;",
+                                                false)
+                                        return
+                                    }
+                                    super.visitFieldInsn(opcode, owner, fieldName, fieldDescriptor)
+                                }
+
+                                @Override
+                                void visitMethodInsn(int opcode, String owner, String methodName, String methodDescriptor,
+                                                     boolean isInterface) {
+									if ((owner == "net/minecraft/data/tags/TagsProvider\$TagAppender"
+											|| owner == "net/minecraft/data/tags/TagAppender")
+											&& opcode != org.objectweb.asm.Opcodes.INVOKEINTERFACE) {
+										patched = true
+										owner = "net/minecraft/data/tags/TagAppender"
+										opcode = org.objectweb.asm.Opcodes.INVOKEINTERFACE
+										isInterface = true
+									}
+									if (owner == "net/minecraft/tags/TagEntry"
+											&& methodDescriptor == "(Lnet/minecraft/resources/ResourceLocation;)Lnet/minecraft/tags/TagEntry;") {
+										patched = true
+										super.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKEVIRTUAL,
+											"net/minecraft/resources/ResourceLocation",
+											"asIdentifier",
+											"()Lnet/minecraft/resources/Identifier;",
+											false)
+										methodDescriptor = "(Lnet/minecraft/resources/Identifier;)Lnet/minecraft/tags/TagEntry;"
+									}
+									if (owner == "net/neoforged/neoforge/data/event/GatherDataEvent"
+											&& methodName == "getExistingFileHelper"
+											&& methodDescriptor == "()Lnet/neoforged/neoforge/common/data/ExistingFileHelper;") {
+										patched = true
+										super.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKESTATIC,
+												"com/simibubi/create/foundation/data/Registrate26Compat",
+												"existingFileHelper",
+												"(Lnet/neoforged/neoforge/data/event/GatherDataEvent;)Lnet/neoforged/neoforge/common/data/ExistingFileHelper;",
+												false)
+										return
+									}
+									if (entry.name == "com/tterrag/registrate/providers/RegistrateDataProvider.class"
+											&& owner == "net/neoforged/neoforge/data/event/GatherDataEvent"
+											&& (methodName == "includeServer" || methodName == "includeClient")
+											&& methodDescriptor == "()Z") {
+										patched = true
+										super.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKESTATIC,
+												"com/simibubi/create/foundation/data/Registrate26Compat",
+												methodName,
+												"(Lnet/neoforged/neoforge/data/event/GatherDataEvent;)Z",
+												false)
+										return
+									}
+									if (entry.name == "com/tterrag/registrate/AbstractRegistrate.class"
+											&& name == "lambda\$defaultCreativeTab\$28"
+											&& owner == "net/minecraft/resources/ResourceLocation"
+											&& methodName == "fromIdentifier"
+											&& methodDescriptor == "(Lnet/minecraft/resources/Identifier;)Lnet/minecraft/resources/ResourceLocation;")
+										defaultCreativeTabIdentifierConverted = true
+									if (entry.name == "com/tterrag/registrate/AbstractRegistrate.class"
+											&& name == "lambda\$defaultCreativeTab\$28"
+											&& !defaultCreativeTabIdentifierConverted
+											&& owner == "com/tterrag/registrate/AbstractRegistrate"
+											&& methodName == "addLang"
+											&& methodDescriptor == "(Ljava/lang/String;Lnet/minecraft/resources/ResourceLocation;Ljava/lang/String;)Lnet/minecraft/network/chat/MutableComponent;") {
+										patched = true
+										// ResourceKey#identifier() now leaves an Identifier below the
+										// translated name. Convert that middle operand back to the legacy
+										// ResourceLocation expected by Registrate#addLang.
+										super.visitInsn(org.objectweb.asm.Opcodes.SWAP)
+										super.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKESTATIC,
+												"net/minecraft/resources/ResourceLocation",
+												"fromIdentifier",
+												"(Lnet/minecraft/resources/Identifier;)Lnet/minecraft/resources/ResourceLocation;",
+												false)
+										super.visitInsn(org.objectweb.asm.Opcodes.SWAP)
+									}
+                                    if (entry.name == "com/tterrag/registrate/providers/ProviderType.class"
+                                            && name == "<clinit>"
+                                            && localOneStores == -1001
+                                            && owner == "com/tterrag/registrate/providers/ProviderType"
+                                            && methodName == "registerProvider") {
+                                        patched = true
+                                        localOneStores = 0
+                                        return
+                                    }
+                                    if (entry.name == "com/tterrag/registrate/builders/BlockBuilder.class"
+                                            && name == "create"
+                                            && owner == "com/tterrag/registrate/builders/BlockBuilder"
+                                            && methodName == "defaultBlockstate"
+                                            && methodDescriptor == "()Lcom/tterrag/registrate/builders/BlockBuilder;") {
+                                        patched = true
+                                        return
+                                    }
+                                    if (entry.name == "com/tterrag/registrate/providers/ProviderType.class"
+                                            && name == "<clinit>"
+                                            && owner == "com/tterrag/registrate/providers/ProviderType"
+                                            && methodName == "registerIntrinsicTag") {
+                                        patched = true
+                                        super.visitInsn(org.objectweb.asm.Opcodes.POP)
+                                        super.visitInsn(org.objectweb.asm.Opcodes.POP)
+                                        super.visitInsn(org.objectweb.asm.Opcodes.POP)
+                                        super.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKESTATIC,
+                                                "com/simibubi/create/foundation/data/Registrate26Compat",
+                                                "noopProviderType",
+                                                "(Ljava/lang/String;)Lcom/tterrag/registrate/providers/ProviderType;",
+                                                false)
+                                        return
+                                    }
+                                    if (entry.name == "com/tterrag/registrate/providers/ProviderType.class"
+                                            && name == "<clinit>"
+                                            && owner == "com/tterrag/registrate/providers/ProviderType"
+                                            && methodName == "registerDynamicTag") {
+                                        patched = true
+                                        super.visitInsn(org.objectweb.asm.Opcodes.POP)
+                                        super.visitInsn(org.objectweb.asm.Opcodes.POP)
+                                        super.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKESTATIC,
+                                                "com/simibubi/create/foundation/data/Registrate26Compat",
+                                                "noopProviderType",
+                                                "(Ljava/lang/String;)Lcom/tterrag/registrate/providers/ProviderType;",
+                                                false)
+                                        return
+                                    }
+                                    if (entry.name == "com/tterrag/registrate/builders/BlockBuilder.class"
+                                            && name == "createEntry"
+                                            && descriptor == "()Lnet/minecraft/world/level/block/Block;"
+                                            && owner == "net/neoforged/fml/util/ObfuscationReflectionHelper"
+                                            && methodName == "setPrivateValue") {
+                                        patched = true
+                                        super.visitInsn(org.objectweb.asm.Opcodes.POP)
+                                        super.visitInsn(org.objectweb.asm.Opcodes.POP)
+                                        super.visitInsn(org.objectweb.asm.Opcodes.POP)
+                                        super.visitInsn(org.objectweb.asm.Opcodes.POP)
+                                        return
+                                    }
+                                    if (owner == "com/tterrag/registrate/util/entry/RegistryEntry"
+                                            && methodName == "getId"
+                                            && methodDescriptor == "()Lnet/minecraft/resources/ResourceLocation;") {
+                                        patched = true
+                                        methodDescriptor = "()Lnet/minecraft/resources/Identifier;"
+                                    }
+                                    if (owner == "net/minecraft/resources/ResourceKey"
+                                            && (methodName == "location" || methodName == "identifier")
+                                            && (methodDescriptor == "()Lnet/minecraft/resources/ResourceLocation;"
+                                            || methodDescriptor == "()Lnet/minecraft/resources/Identifier;")) {
+                                        patched = true
+                                        // Minecraft 26.2 exposes ResourceKey#identifier(). Keep Registrate's
+                                        // bytecode aligned with the production runtime instead of relying on
+                                        // a development-only compatibility bridge.
+                                        methodName = "identifier"
+                                        methodDescriptor = "()Lnet/minecraft/resources/Identifier;"
+                                    }
+                                    if (entry.name == "com/tterrag/registrate/util/entry/RegistryEntry.class"
+                                            && owner == "net/minecraft/resources/ResourceLocation"
+                                            && methodName == "getPath"
+                                            && methodDescriptor == "()Ljava/lang/String;") {
+                                        patched = true
+                                        owner = "net/minecraft/resources/Identifier"
+                                    }
+                                    if (entry.name != "com/tterrag/registrate/util/entry/RegistryEntry.class"
+                                            && owner == "net/minecraft/resources/Identifier"
+                                            && methodName == "getPath"
+                                            && methodDescriptor == "()Ljava/lang/String;") {
+                                        patched = true
+                                        owner = "net/minecraft/resources/ResourceLocation"
+                                    }
+									if (entry.name == "com/tterrag/registrate/providers/RegistrateLangProvider.class"
+											&& name == "getAutomaticName"
+											&& owner == "net/minecraft/core/Registry"
+											&& methodName == "get"
+											&& methodDescriptor == "(Lnet/minecraft/resources/ResourceLocation;)Ljava/lang/Object;") {
+										patched = true
+										methodName = "getValue"
+										methodDescriptor = "(Lnet/minecraft/resources/Identifier;)Ljava/lang/Object;"
+									}
+									if (entry.name == "com/tterrag/registrate/providers/RegistrateLangProvider.class"
+											&& name == "getAutomaticName"
+											&& owner == "net/minecraft/core/Registry"
+											&& methodName == "get"
+											&& methodDescriptor == "(Lnet/minecraft/resources/Identifier;)Ljava/lang/Object;") {
+										patched = true
+										methodName = "getValue"
+									}
+									if (entry.name == "com/tterrag/registrate/providers/RegistrateLangProvider.class"
+											&& name == "getAutomaticName"
+											&& owner == "net/minecraft/core/Registry"
+											&& methodName == "getKey"
+											&& methodDescriptor == "(Ljava/lang/Object;)Lnet/minecraft/resources/ResourceLocation;") {
+										patched = true
+										methodDescriptor = "(Ljava/lang/Object;)Lnet/minecraft/resources/Identifier;"
+									}
+									if (entry.name == "com/tterrag/registrate/providers/RegistrateLangProvider.class"
+											&& name == "getAutomaticName"
+											&& (owner == "net/minecraft/resources/ResourceLocation"
+											|| owner == "net/minecraft/resources/Identifier")
+											&& methodName == "getPath"
+											&& methodDescriptor == "()Ljava/lang/String;") {
+										patched = true
+										owner = "net/minecraft/resources/Identifier"
+									}
+                                    if (owner == "net/neoforged/neoforge/registries/RegisterEvent\$RegisterHelper"
+                                            && methodName == "register"
+                                            && (methodDescriptor == "(Lnet/minecraft/resources/ResourceLocation;Ljava/lang/Object;)V"
+                                            || methodDescriptor == "(Lnet/minecraft/resources/Identifier;Ljava/lang/Object;)V")) {
+                                        patched = true
+                                        // RegisterHelper receives the legacy ResourceLocation still used by
+                                        // Registrate. patchNeoForgeRegisterHelper installs the converting bridge.
+                                        methodDescriptor = "(Lnet/minecraft/resources/ResourceLocation;Ljava/lang/Object;)V"
+                                    }
+                                    if (owner == "net/neoforged/neoforge/registries/DeferredHolder"
+                                            && methodName == "create"
+                                            && (methodDescriptor == "(Lnet/minecraft/resources/ResourceKey;Lnet/minecraft/resources/ResourceLocation;)Lnet/neoforged/neoforge/registries/DeferredHolder;"
+                                            || methodDescriptor == "(Lnet/minecraft/resources/ResourceKey;Lnet/minecraft/resources/Identifier;)Lnet/neoforged/neoforge/registries/DeferredHolder;")) {
+                                        patched = true
+                                        // The injected DeferredHolder compatibility class exposes this overload
+                                        // and performs ResourceLocation -> Identifier conversion itself.
+                                        methodDescriptor = "(Lnet/minecraft/resources/ResourceKey;Lnet/minecraft/resources/ResourceLocation;)Lnet/neoforged/neoforge/registries/DeferredHolder;"
+                                    }
+                                    if ((owner == "net/minecraft/Util" || owner == "net/minecraft/util/Util"
+                                            || owner == "com/simibubi/create/foundation/data/Registrate26Compat")
+                                            && methodName == "makeDescriptionId"
+                                            && (methodDescriptor == "(Ljava/lang/String;Lnet/minecraft/resources/ResourceLocation;)Ljava/lang/String;"
+                                            || methodDescriptor == "(Ljava/lang/String;Lnet/minecraft/resources/Identifier;)Ljava/lang/String;")) {
+                                        patched = true
+                                        // Registrate's call sites still have ResourceLocation on the stack.
+                                        // Route through a stable bridge instead of changing only the descriptor,
+                                        // which would produce an invalid operand stack.
+                                        owner = "com/simibubi/create/foundation/data/Registrate26Compat"
+										methodName = "makeDescriptionIdLegacy"
+                                        methodDescriptor = "(Ljava/lang/String;Lnet/minecraft/resources/ResourceLocation;)Ljava/lang/String;"
+                                    }
+                                    if (owner == "net/minecraft/world/entity/EntityType\$Builder"
+                                            && methodName == "build"
+                                            && methodDescriptor == "(Ljava/lang/String;)Lnet/minecraft/world/entity/EntityType;") {
+                                        patched = true
+										super.visitVarInsn(org.objectweb.asm.Opcodes.ALOAD, 0)
+										super.visitInsn(org.objectweb.asm.Opcodes.SWAP)
+                                        super.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKESTATIC,
+                                                "com/simibubi/create/foundation/data/Registrate26Compat",
+                                                "entityTypeKey",
+												"(Lcom/tterrag/registrate/builders/AbstractBuilder;Ljava/lang/String;)Lnet/minecraft/resources/ResourceKey;",
+                                                false)
+                                        methodDescriptor = "(Lnet/minecraft/resources/ResourceKey;)Lnet/minecraft/world/entity/EntityType;"
+                                    }
+									if (entry.name == "com/tterrag/registrate/builders/EntityBuilder.class"
+											&& name == "createEntry"
+											&& owner == "com/simibubi/create/foundation/data/Registrate26Compat"
+											&& methodName == "entityTypeKey"
+											&& methodDescriptor == "(Ljava/lang/String;)Lnet/minecraft/resources/ResourceKey;") {
+										patched = true
+										super.visitVarInsn(org.objectweb.asm.Opcodes.ALOAD, 0)
+										super.visitInsn(org.objectweb.asm.Opcodes.SWAP)
+										methodDescriptor = "(Lcom/tterrag/registrate/builders/AbstractBuilder;Ljava/lang/String;)Lnet/minecraft/resources/ResourceKey;"
+									}
+                                    if (owner == "net/minecraft/world/level/block/entity/BlockEntityType\$Builder"
+                                            && methodName == "of"
+                                            && methodDescriptor == "(Lnet/minecraft/world/level/block/entity/BlockEntityType\$BlockEntitySupplier;[Lnet/minecraft/world/level/block/Block;)Lnet/minecraft/world/level/block/entity/BlockEntityType\$Builder;") {
+                                        patched = true
+                                        owner = "com/simibubi/create/foundation/data/Registrate26Compat"
+                                        methodName = "blockEntityType"
+                                        methodDescriptor = "(Lnet/minecraft/world/level/block/entity/BlockEntityType\$BlockEntitySupplier;[Lnet/minecraft/world/level/block/Block;)Lnet/minecraft/world/level/block/entity/BlockEntityType;"
+                                    }
+                                    if (owner == "net/minecraft/world/level/block/entity/BlockEntityType\$Builder"
+                                            && methodName == "build"
+                                            && methodDescriptor == "(Lcom/mojang/datafixers/types/Type;)Lnet/minecraft/world/level/block/entity/BlockEntityType;") {
+                                        patched = true
+                                        super.visitInsn(org.objectweb.asm.Opcodes.POP)
+                                        return
+                                    }
+                                    super.visitMethodInsn(opcode, owner, methodName, methodDescriptor, isInterface)
+                                }
+                            }
+                        }
+                    }
+                    reader.accept(visitor, 0)
+                    bytes = writer.toByteArray()
+                }
+
+                output.write(bytes)
+                output.closeEntry()
+            }
+        }
+    }
+
+    if (patched) {
+        if (!registrateJar.delete())
+            throw new GradleException("Could not replace ${registrateJar}")
+        if (!tmpJar.renameTo(registrateJar))
+            throw new GradleException("Could not move patched Registrate jar to ${registrateJar}")
+    } else {
+        tmpJar.delete()
+    }
+}
+
+def patchNeoForgeRegisterHelper = { File neoForgeJar ->
+    if (!neoForgeJar.exists())
+        return
+
+    File tmpJar = new File(neoForgeJar.parentFile, neoForgeJar.name + ".tmp")
+    boolean patched = false
+
+    new java.util.zip.ZipInputStream(new FileInputStream(neoForgeJar)).withCloseable { input ->
+        new java.util.zip.ZipOutputStream(new FileOutputStream(tmpJar)).withCloseable { output ->
+            java.util.zip.ZipEntry entry
+            while ((entry = input.nextEntry) != null) {
+                output.putNextEntry(new java.util.zip.ZipEntry(entry.name))
+                def entryBytes = new ByteArrayOutputStream()
+                byte[] buffer = new byte[8192]
+                int read
+                while ((read = input.read(buffer)) != -1)
+                    entryBytes.write(buffer, 0, read)
+                byte[] bytes = entryBytes.toByteArray()
+
+                if (entry.name == "net/neoforged/neoforge/registries/RegisterEvent\$RegisterHelper.class") {
+                    boolean hasBridge = false
+                    def reader = new org.objectweb.asm.ClassReader(bytes)
+                    def writer = new org.objectweb.asm.ClassWriter(reader, 0)
+                    def visitor = new org.objectweb.asm.ClassVisitor(org.objectweb.asm.Opcodes.ASM9, writer) {
+                        @Override
+                        org.objectweb.asm.MethodVisitor visitMethod(int access, String name, String descriptor,
+                                                                    String signature, String[] exceptions) {
+                            if (name == "register"
+                                    && descriptor == "(Lnet/minecraft/resources/ResourceLocation;Ljava/lang/Object;)V")
+                                hasBridge = true
+                            return super.visitMethod(access, name, descriptor, signature, exceptions)
+                        }
+
+                        @Override
+                        void visitEnd() {
+                            if (!hasBridge) {
+                                patched = true
+                                def mv = super.visitMethod(org.objectweb.asm.Opcodes.ACC_PUBLIC,
+                                        "register",
+                                        "(Lnet/minecraft/resources/ResourceLocation;Ljava/lang/Object;)V",
+                                        null,
+                                        null)
+                                mv.visitCode()
+                                mv.visitVarInsn(org.objectweb.asm.Opcodes.ALOAD, 0)
+                                mv.visitVarInsn(org.objectweb.asm.Opcodes.ALOAD, 1)
+                                mv.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKEVIRTUAL,
+                                        "net/minecraft/resources/ResourceLocation",
+                                        "asIdentifier",
+                                        "()Lnet/minecraft/resources/Identifier;",
+                                        false)
+                                mv.visitVarInsn(org.objectweb.asm.Opcodes.ALOAD, 2)
+                                mv.visitMethodInsn(org.objectweb.asm.Opcodes.INVOKEINTERFACE,
+                                        "net/neoforged/neoforge/registries/RegisterEvent\$RegisterHelper",
+                                        "register",
+                                        "(Lnet/minecraft/resources/Identifier;Ljava/lang/Object;)V",
+                                        true)
+                                mv.visitInsn(org.objectweb.asm.Opcodes.RETURN)
+                                mv.visitMaxs(3, 3)
+                                mv.visitEnd()
+                            }
+                            super.visitEnd()
+                        }
+                    }
+                    reader.accept(visitor, 0)
+                    bytes = writer.toByteArray()
+                }
+
+                output.write(bytes)
+                output.closeEntry()
+            }
+        }
+    }
+
+    if (patched) {
+        if (!neoForgeJar.delete())
+            throw new GradleException("Could not replace ${neoForgeJar}")
+        if (!tmpJar.renameTo(neoForgeJar))
+            throw new GradleException("Could not move patched NeoForge jar to ${neoForgeJar}")
+    } else {
+        tmpJar.delete()
+    }
+}
+
+tasks.matching { it.name in ["runServer", "runClient", "runData", "runGameTestServer"] }.configureEach {
+    doFirst {
+        fileTree(layout.buildDirectory.dir("generated/jarJar")).matching {
+            include("**/Registrate-*.jar")
+        }.files.each { registrateJar ->
+            patchRegistrateRegistryEntry(registrateJar)
+        }
+        configurations.runtimeClasspath.files.findAll {
+            it.name.startsWith("Registrate-") && it.name.endsWith(".jar")
+        }.each { registrateJar ->
+            patchRegistrateRegistryEntry(registrateJar)
+        }
+        fileTree(layout.buildDirectory.dir("moddev/artifacts")).matching {
+            include("minecraft-patched-*.jar")
+        }.files.each { minecraftJar ->
+            ant.zip(destfile: minecraftJar, update: true) {
+                fileset(dir: layout.buildDirectory.dir("classes/java/main").get().asFile) {
+                    include(name: "net/minecraft/data/tags/IntrinsicHolderTagsProvider*.class")
+                    include(name: "net/minecraft/world/item/ArmorItem*.class")
+                    include(name: "net/minecraft/world/item/ArmorMaterial*.class")
+                    include(name: "net/minecraft/world/item/ArmorMaterials*.class")
+                    include(name: "net/minecraft/world/item/Equipable*.class")
+                    include(name: "net/minecraft/world/item/SwordItem.class")
+                    include(name: "net/minecraft/world/item/Tier.class")
+                    include(name: "net/minecraft/world/InteractionResultHolder*.class")
+                    include(name: "net/minecraft/world/ItemInteractionResult*.class")
+                    include(name: "net/minecraft/resources/ResourceKey*.class")
+                    include(name: "net/minecraft/resources/ResourceLocation*.class")
+                    include(name: "net/minecraft/Util.class")
+                }
+            }
+        }
+        configurations.runtimeClasspath.files.findAll {
+            it.name == "neoforge-${neo_version}-universal.jar"
+        }.each { neoForgeJar ->
+            patchNeoForgeRegisterHelper(neoForgeJar)
+            ant.zip(destfile: neoForgeJar, update: true) {
+                fileset(dir: layout.buildDirectory.dir("classes/java/main").get().asFile) {
+                    include(name: "net/neoforged/neoforge/client/model/generators/BlockModelProvider.class")
+                    include(name: "net/neoforged/neoforge/client/model/generators/BlockStateProvider.class")
+                    include(name: "net/neoforged/neoforge/client/model/generators/IGeneratedBlockState.class")
+                    include(name: "net/neoforged/neoforge/client/model/generators/ItemModelBuilder.class")
+                    include(name: "net/neoforged/neoforge/client/model/generators/ItemModelProvider.class")
+                    include(name: "net/neoforged/neoforge/client/model/generators/ModelBuilder.class")
+                    include(name: "net/neoforged/neoforge/client/model/generators/ModelFile*.class")
+                    include(name: "net/neoforged/neoforge/client/model/generators/MultiPartBlockStateBuilder.class")
+                    include(name: "net/neoforged/neoforge/client/model/generators/VariantBlockStateBuilder.class")
+					include(name: "net/neoforged/neoforge/common/data/ExistingFileHelper.class")
+                    include(name: "net/neoforged/neoforge/common/util/INBTSerializable*.class")
+                    include(name: "net/neoforged/neoforge/registries/DeferredHolder.class")
+                }
+            }
+        }
+        configurations.runtimeClasspath.files.findAll {
+            it.name.startsWith("catnip-neoforge-") && it.name.endsWith(".jar")
+        }.each { catnipJar ->
+            ant.zip(destfile: catnipJar, update: true) {
+                fileset(dir: layout.buildDirectory.dir("classes/java/main").get().asFile) {
+                    include(name: "net/createmod/catnip/api/config/ConfigBase*.class")
+                    include(name: "net/createmod/catnip/api/lang/LangBuilder.class")
+                    include(name: "net/createmod/catnip/api/lang/LangNumberFormat.class")
+                    include(name: "net/createmod/catnip/client/ConflictSafeKeyMapping.class")
+                    include(name: "net/createmod/catnip/net/base/BasePacketPayload*.class")
+                    include(name: "net/createmod/catnip/net/base/ClientboundPacketPayload*.class")
+                    include(name: "net/createmod/catnip/net/base/ServerboundPacketPayload*.class")
+                    include(name: "net/createmod/catnip/net/base/CatnipPacketRegistry*.class")
+                }
+            }
+        }
+        configurations.runtimeClasspath.files.findAll {
+            it.name == "loader-11.0.13.jar"
+        }.each { loaderJar ->
+            ant.zip(destfile: loaderJar, update: true) {
+                fileset(dir: layout.buildDirectory.dir("classes/java/main").get().asFile) {
+                    include(name: "net/neoforged/fml/loading/FMLEnvironment.class")
+                }
+            }
+        }
+        delete(layout.buildDirectory.dir("classes/java/main/net/createmod"))
+        delete(layout.buildDirectory.dir("classes/java/main/net/neoforged/fml"))
+        delete(layout.buildDirectory.dir("classes/java/main/net/neoforged/neoforge/client"))
+        delete(layout.buildDirectory.dir("classes/java/main/net/neoforged/neoforge/common/data"))
+        delete(layout.buildDirectory.dir("classes/java/main/net/neoforged/neoforge/common/util"))
+        delete(layout.buildDirectory.dir("classes/java/main/net/neoforged/neoforge/registries"))
+        delete(layout.buildDirectory.dir("classes/java/main/net/minecraft/client"))
+        delete(layout.buildDirectory.dir("classes/java/main/net/minecraft/data"))
+        delete(layout.buildDirectory.dir("classes/java/main/net/minecraft/network"))
+        delete(layout.buildDirectory.dir("classes/java/main/net/minecraft/resources"))
+        delete(layout.buildDirectory.dir("classes/java/main/net/minecraft/util"))
+        delete(layout.buildDirectory.dir("classes/java/main/net/minecraft/world"))
+        delete(layout.buildDirectory.file("classes/java/main/net/minecraft/MethodsReturnNonnullByDefault.class"))
+        delete(layout.buildDirectory.file("classes/java/main/net/minecraft/Util.class"))
+        // Also remove nested compatibility classes such as Util$OS. Leaving even
+        // one class makes the Create module export net.minecraft alongside Minecraft.
+        delete(layout.buildDirectory.dir("classes/java/main/net/minecraft"))
+        delete(layout.buildDirectory.dir("classes/java/main/com/mojang"))
+        delete(rootProject.layout.projectDirectory.dir("Ponder/catnip/neoforge/build/classes/java/main/net/minecraft"))
+    }
+}
+
+def patchLocalCatnipJar = tasks.register("patchLocalCatnipJar") {
+    dependsOn(gradle.includedBuild("Ponder").task(":catnip:neoforge:jar"))
+    doLast {
+        fileTree(layout.projectDirectory.dir("Ponder/catnip/neoforge/build/libs")).matching {
+            include("catnip-neoforge-*.jar")
+        }.files.each { catnipJar ->
+            ant.zip(destfile: catnipJar, update: true) {
+                fileset(dir: layout.buildDirectory.dir("classes/java/main").get().asFile) {
+                    include(name: "net/createmod/catnip/api/config/ConfigBase*.class")
+                    include(name: "net/createmod/catnip/api/lang/LangBuilder.class")
+                    include(name: "net/createmod/catnip/api/lang/LangNumberFormat.class")
+                    include(name: "net/createmod/catnip/client/ConflictSafeKeyMapping.class")
+                    include(name: "net/createmod/catnip/net/base/BasePacketPayload*.class")
+                    include(name: "net/createmod/catnip/net/base/ClientboundPacketPayload*.class")
+                    include(name: "net/createmod/catnip/net/base/ServerboundPacketPayload*.class")
+                    include(name: "net/createmod/catnip/net/base/CatnipPacketRegistry*.class")
+                }
+            }
+        }
+    }
+}
+
+tasks.named("prepareEmbeddedFlywheel").configure {
+	dependsOn(patchLocalCatnipJar)
+}
+
+tasks.named("compileJava").configure {
+	doFirst {
+		configurations.compileClasspath.files.findAll {
+			it.name.startsWith("Registrate-") && it.name.endsWith(".jar")
+		}.each { registrateJar ->
+			patchRegistrateRegistryEntry(registrateJar)
+			remapResourceLocationClassReferences(registrateJar, false)
+		}
+	}
+}
+
+// jarJar packages its generated dependency jars before the regular jar task runs.
+// Patch Registrate here as well so a clean/incremental build cannot embed the
+// unmodified 1.21 library (which still references ResourceLocation on 26.2).
+tasks.named("jarJar").configure {
+	dependsOn(tasks.named("compileJava"))
+	doFirst {
+		fileTree(layout.buildDirectory.dir("generated/jarJar")).matching {
+			include("**/Registrate-*.jar")
+		}.files.each { registrateJar ->
+			patchRegistrateRegistryEntry(registrateJar)
+			remapResourceLocationClassReferences(registrateJar)
+		}
+	}
+}
+
+tasks.named("jar").configure {
+    dependsOn(tasks.named("prepareEmbeddedFlywheel"))
+    dependsOn(patchLocalCatnipJar)
+    doFirst {
+        fileTree(layout.buildDirectory.dir("generated/jarJar")).matching {
+            include("**/Registrate-*.jar")
+        }.files.each { registrateJar ->
+            patchRegistrateRegistryEntry(registrateJar)
+            remapResourceLocationClassReferences(registrateJar)
+        }
+    }
+    doLast {
+        remapResourceLocationClassReferences(archiveFile.get().asFile)
+    }
+}
+
+tasks.withType(Jar).configureEach {
+    manifest.attributes([
+        "Git-Hash": gitHash
+    ])
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+}
+
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [
+        "mod_version"           : mod_version,
+        "mod_compat_version"    : mod_compat_version,
+        "mod_id"                : mod_id,
+        "mod_name"              : mod_name,
+        "mod_author"            : mod_author,
+        "mod_description"       : mod_description,
+        "mod_license"           : mod_license,
+        "neo_version"           : neo_version,
+        "neo_version_range"     : neo_version_range,
+        "minecraft_version"     : minecraft_version,
+        "ponder_version"        : ponder_version,
+        "flywheel_version_range": flywheel_version_range,
+    ]
+    inputs.properties(replaceProperties)
+    expand(replaceProperties)
+    from("src/main/templates")
+    into("build/generated/sources/modMetadata")
+}
+
+sourceSets.main.resources.srcDir(generateModMetadata)
+neoForge.ideSyncTask(generateModMetadata)
+
+publishing {
+    repositories {
+        maven {
+            url = "https://maven.createmod.net"
+            credentials {
+                username = providers.environmentVariable("MAVEN_USERNAME").orNull
+                password = providers.environmentVariable("MAVEN_PASSWORD").orNull
+            }
+        }
+    }
+
+    publications {
+        register("mavenJava", MavenPublication) {
+            from(components.java)
+        }
+    }
+}
+
+publishMods {
+    file = jar.archiveFile
+    changelog = silk.changelog
+    type = STABLE
+    version = "$mod_version+mc$minecraft_version"
+    displayName = "$mod_name $mod_version for mc$minecraft_version"
+    modLoaders.add("neoforge")
+
+    curseforge {
+        accessToken = providers.environmentVariable("CURSEFORGE_TOKEN")
+        projectId = "328085"
+        minecraftVersions.add(minecraft_version)
+    }
+
+    modrinth {
+        accessToken = providers.environmentVariable("MODRINTH_TOKEN")
+        projectId = "LNytGWDc"
+        minecraftVersions.add(minecraft_version)
+    }
+
+    github {
+        accessToken = providers.environmentVariable("GITHUB_TOKEN")
+        repository = "AlexSensey/create-adapted"
+        commitish = gitHash
+        tagName = "mc$minecraft_version-$mod_version"
+        file.unset()
+        file.unsetConvention()
+
+        allowEmptyFiles = true
+    }
+}
+
+String calculateGitHash() {
+    try {
+        ExecOutput output = providers.exec {
+            commandLine("git", "rev-parse", "HEAD")
+        }
+        return output.standardOutput.asText.get().trim()
+    } catch (Throwable ignored) {
+        return "unknown"
+    }
+}
+
+boolean hasUnstaged() {
+    try {
+        ExecOutput output = providers.exec {
+            commandLine("git", "status", "--porcelain")
+        }
+        String result = output.standardOutput.asText.get().replace("/M gradlew(\\.bat)?/", "").trim()
+        if (!result.isEmpty())
+            println("Found stageable results:\n ${result}\n")
+        return !result.isEmpty()
+    } catch (Throwable ignored) {
+        return false
+    }
+}

@@ -1,0 +1,323 @@
+package com.simibubi.create.foundation.block;
+
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Supplier;
+
+import org.apache.commons.lang3.ArrayUtils;
+
+import com.simibubi.create.foundation.data.TagGen;
+import com.tterrag.registrate.AbstractRegistrate;
+import com.tterrag.registrate.builders.BlockBuilder;
+import com.tterrag.registrate.providers.DataGenContext;
+import com.tterrag.registrate.providers.RegistrateBlockstateProvider;
+import com.tterrag.registrate.providers.RegistrateRecipeProvider;
+import com.tterrag.registrate.providers.loot.RegistrateBlockLootTables;
+import com.tterrag.registrate.util.DataIngredient;
+import com.tterrag.registrate.util.entry.BlockEntry;
+import com.tterrag.registrate.util.nullness.NonNullBiConsumer;
+import com.tterrag.registrate.util.nullness.NonNullFunction;
+
+import net.createmod.catnip.api.data.Iterate;
+import net.createmod.catnip.api.lang.Lang;
+import net.createmod.catnip.api.registry.RegisteredObjectsHelper;
+import net.minecraft.data.recipes.RecipeCategory;
+import net.minecraft.data.recipes.ShapelessRecipeBuilder;
+import net.minecraft.resources.Identifier;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.WeatheringCopper.WeatherState;
+import net.minecraft.world.level.block.WeatheringCopperFullBlock;
+import net.minecraft.world.level.block.WeatheringCopperSlabBlock;
+import net.minecraft.world.level.block.state.BlockBehaviour.Properties;
+
+import net.neoforged.neoforge.client.model.generators.ModelProvider;
+
+public class CopperBlockSet {
+	protected static final WeatherState[] WEATHER_STATES = WeatherState.values();
+	protected static final int WEATHER_STATE_COUNT = WEATHER_STATES.length;
+
+	protected static final Map<WeatherState, Supplier<Block>> BASE_BLOCKS = new EnumMap<>(WeatherState.class);
+
+	static {
+		for (WeatherState state : WEATHER_STATES)
+			BASE_BLOCKS.put(state, () -> Blocks.COPPER_BLOCK.weathering().pick(state));
+	}
+
+	public static final Variant<?>[] DEFAULT_VARIANTS =
+		new Variant<?>[]{BlockVariant.INSTANCE, SlabVariant.INSTANCE, StairVariant.INSTANCE};
+
+	protected final String name;
+	protected final String generalDirectory; // Leave empty for root folder
+	protected final Variant<?>[] variants;
+	protected final Map<Variant<?>, BlockEntry<?>[]> entries = new HashMap<>();
+	protected final NonNullBiConsumer<DataGenContext<Block, ?>, RegistrateRecipeProvider> mainBlockRecipe;
+	protected final String endTextureName;
+	protected final NonNullBiConsumer<WeatherState, Block> onRegister;
+
+	public CopperBlockSet(AbstractRegistrate<?> registrate, String name, String endTextureName, Variant<?>[] variants) {
+		this(registrate, name, endTextureName, variants, NonNullBiConsumer.noop(), "copper/", NonNullBiConsumer.noop());
+	}
+
+	public CopperBlockSet(AbstractRegistrate<?> registrate, String name, String endTextureName, Variant<?>[] variants, String generalDirectory) {
+		this(registrate, name, endTextureName, variants, NonNullBiConsumer.noop(), generalDirectory, NonNullBiConsumer.noop());
+	}
+
+	public CopperBlockSet(AbstractRegistrate<?> registrate, String name, String endTextureName, Variant<?>[] variants, NonNullBiConsumer<DataGenContext<Block, ?>, RegistrateRecipeProvider> mainBlockRecipe) {
+		this(registrate, name, endTextureName, variants, mainBlockRecipe, "copper/", NonNullBiConsumer.noop());
+	}
+
+	public CopperBlockSet(AbstractRegistrate<?> registrate, String name, String endTextureName, Variant<?>[] variants, NonNullBiConsumer<DataGenContext<Block, ?>, RegistrateRecipeProvider> mainBlockRecipe, NonNullBiConsumer<WeatherState, Block> onRegister) {
+		this(registrate, name, endTextureName, variants, mainBlockRecipe, "copper/", onRegister);
+	}
+
+	public CopperBlockSet(AbstractRegistrate<?> registrate, String name, String endTextureName, Variant<?>[] variants,
+						  NonNullBiConsumer<DataGenContext<Block, ?>, RegistrateRecipeProvider> mainBlockRecipe, String generalDirectory, NonNullBiConsumer<WeatherState, Block> onRegister) {
+		this.name = name;
+		this.generalDirectory = generalDirectory;
+		this.endTextureName = endTextureName;
+		this.variants = variants;
+		this.mainBlockRecipe = mainBlockRecipe;
+		this.onRegister = onRegister;
+
+		for (boolean waxed : Iterate.falseAndTrue) {
+			for (Variant<?> variant : this.variants) {
+				BlockEntry<?>[] entries =
+					waxed ? this.entries.get(variant) : new BlockEntry<?>[WEATHER_STATE_COUNT * 2];
+				for (WeatherState state : WEATHER_STATES) {
+					int index = getIndex(state, waxed);
+					BlockEntry<?> entry = createEntry(registrate, variant, state, waxed);
+					entries[index] = entry;
+
+					if (waxed) {
+						CopperRegistries.addWaxable(entries[getIndex(state, false)], entry);
+					} else if (state != WeatherState.UNAFFECTED) {
+						CopperRegistries.addWeathering(entries[getIndex(WEATHER_STATES[state.ordinal() - 1], false)], entry);
+					}
+				}
+				if (!waxed)
+					this.entries.put(variant, entries);
+			}
+		}
+	}
+
+	protected <T extends Block> BlockEntry<?> createEntry(AbstractRegistrate<?> registrate, Variant<T> variant,
+														  WeatherState state, boolean waxed) {
+		String name = "";
+		if (waxed) {
+			name += "waxed_";
+		}
+		name += getWeatherStatePrefix(state);
+		name += this.name;
+
+		String suffix = variant.getSuffix();
+		if (!suffix.equals(""))
+			name = Lang.nonPluralId(name);
+
+		name += suffix;
+
+		Supplier<Block> baseBlock = BASE_BLOCKS.get(state);
+		BlockBuilder<T, ?> builder = registrate.block(name, variant.getFactory(this, state, waxed))
+			.initialProperties(() -> baseBlock.get())
+			.loot((lt, block) -> variant.generateLootTable(lt, block, this, state, waxed))
+			.blockstate((ctx, prov) -> variant.generateBlockState(ctx, prov, this, state, waxed))
+			.transform(TagGen.pickaxeOnly())
+			.onRegister(block -> onRegister.accept(state, block))
+			.tag(BlockTags.NEEDS_STONE_TOOL)
+			.simpleItem();
+
+		if (variant == BlockVariant.INSTANCE && state == WeatherState.UNAFFECTED && !waxed) {
+			builder.recipe(mainBlockRecipe::accept);
+		} else {
+			builder.recipe((ctx, prov) -> {
+				// TODO 26.2: Port waxed copper recipe generation to the new recipe builder API.
+				variant.generateRecipes(get(BlockVariant.INSTANCE, state, waxed), ctx, prov);
+			});
+		}
+
+		if (variant == StairVariant.INSTANCE)
+			builder.tag(BlockTags.STAIRS);
+
+		if (variant == SlabVariant.INSTANCE)
+			builder.tag(BlockTags.SLABS);
+
+		return builder.register();
+	}
+
+	protected int getIndex(WeatherState state, boolean waxed) {
+		return state.ordinal() + (waxed ? WEATHER_STATE_COUNT : 0);
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public String getEndTextureName() {
+		return endTextureName;
+	}
+
+	public Variant<?>[] getVariants() {
+		return variants;
+	}
+
+	public boolean hasVariant(Variant<?> variant) {
+		return ArrayUtils.contains(variants, variant);
+	}
+
+	public BlockEntry<?> get(Variant<?> variant, WeatherState state, boolean waxed) {
+		BlockEntry<?>[] entries = this.entries.get(variant);
+		if (entries != null) {
+			return entries[getIndex(state, waxed)];
+		}
+		return null;
+	}
+
+	public BlockEntry<?> getStandard() {
+		return get(BlockVariant.INSTANCE, WeatherState.UNAFFECTED, false);
+	}
+
+	public static String getWeatherStatePrefix(WeatherState state) {
+		if (state != WeatherState.UNAFFECTED) {
+			return state.name()
+				.toLowerCase(Locale.ROOT) + "_";
+		}
+		return "";
+	}
+
+	public interface Variant<T extends Block> {
+		String getSuffix();
+
+		NonNullFunction<Properties, T> getFactory(CopperBlockSet blocks, WeatherState state, boolean waxed);
+
+		default void generateLootTable(RegistrateBlockLootTables lootTable, T block, CopperBlockSet blocks,
+									   WeatherState state, boolean waxed) {
+			lootTable.dropSelf(block);
+		}
+
+		void generateRecipes(BlockEntry<?> blockVariant, DataGenContext<Block, T> ctx, RegistrateRecipeProvider prov);
+
+		void generateBlockState(DataGenContext<Block, T> ctx, RegistrateBlockstateProvider prov, CopperBlockSet blocks,
+								WeatherState state, boolean waxed);
+	}
+
+	public static class BlockVariant implements Variant<Block> {
+		public static final BlockVariant INSTANCE = new BlockVariant();
+
+		protected BlockVariant() {
+		}
+
+		@Override
+		public String getSuffix() {
+			return "";
+		}
+
+		@Override
+		public NonNullFunction<Properties, Block> getFactory(CopperBlockSet blocks, WeatherState state, boolean waxed) {
+			if (waxed) {
+				return Block::new;
+			} else {
+				return p -> new WeatheringCopperFullBlock(state, p);
+			}
+		}
+
+		@Override
+		public void generateBlockState(DataGenContext<Block, Block> ctx, RegistrateBlockstateProvider prov,
+									   CopperBlockSet blocks, WeatherState state, boolean waxed) {
+			// TODO 26.2: Port copper blockstate generation to the new provider API.
+		}
+
+		@Override
+		public void generateRecipes(BlockEntry<?> blockVariant, DataGenContext<Block, Block> ctx,
+									RegistrateRecipeProvider prov) {
+		}
+
+	}
+
+	public static class SlabVariant implements Variant<SlabBlock> {
+		public static final SlabVariant INSTANCE = new SlabVariant();
+
+		protected SlabVariant() {
+		}
+
+		@Override
+		public String getSuffix() {
+			return "_slab";
+		}
+
+		@Override
+		public NonNullFunction<Properties, SlabBlock> getFactory(CopperBlockSet blocks, WeatherState state,
+																 boolean waxed) {
+			if (waxed) {
+				return SlabBlock::new;
+			} else {
+				return p -> new WeatheringCopperSlabBlock(state, p);
+			}
+		}
+
+		@Override
+		public void generateLootTable(RegistrateBlockLootTables lootTable, SlabBlock block, CopperBlockSet blocks,
+									  WeatherState state, boolean waxed) {
+			lootTable.add(block, lootTable.createSlabItemTable(block));
+		}
+
+		@Override
+		public void generateBlockState(DataGenContext<Block, SlabBlock> ctx, RegistrateBlockstateProvider prov,
+									   CopperBlockSet blocks, WeatherState state, boolean waxed) {
+			// TODO 26.2: Port copper slab blockstate generation to the new provider API.
+		}
+
+		@Override
+		public void generateRecipes(BlockEntry<?> blockVariant, DataGenContext<Block, SlabBlock> ctx,
+									RegistrateRecipeProvider prov) {
+			prov.slab(DataIngredient.items(blockVariant.get()), RecipeCategory.BUILDING_BLOCKS, ctx::get, null, true);
+		}
+	}
+
+	public static class StairVariant implements Variant<StairBlock> {
+		public static final StairVariant INSTANCE = new StairVariant(BlockVariant.INSTANCE);
+
+		protected final Variant<?> parent;
+
+		protected StairVariant(Variant<?> parent) {
+			this.parent = parent;
+		}
+
+		@Override
+		public String getSuffix() {
+			return "_stairs";
+		}
+
+		@Override
+		public NonNullFunction<Properties, StairBlock> getFactory(CopperBlockSet blocks, WeatherState state,
+																  boolean waxed) {
+			if (!blocks.hasVariant(parent)) {
+				throw new IllegalStateException(
+						"Cannot add StairVariant '" + this + "' without parent Variant '" + parent.toString() + "'!");
+			}
+			if (waxed) {
+				return CreateCopperStairBlock::new;
+			} else {
+				return p -> new CreateWeatheringCopperStairBlock(state, p);
+			}
+		}
+
+		@Override
+		public void generateBlockState(DataGenContext<Block, StairBlock> ctx, RegistrateBlockstateProvider prov,
+									   CopperBlockSet blocks, WeatherState state, boolean waxed) {
+			// TODO 26.2: Port copper stair blockstate generation to the new provider API.
+		}
+
+		@Override
+		public void generateRecipes(BlockEntry<?> blockVariant, DataGenContext<Block, StairBlock> ctx,
+									RegistrateRecipeProvider prov) {
+			prov.stairs(DataIngredient.items(blockVariant.get()), RecipeCategory.BUILDING_BLOCKS, ctx::get, null, true);
+		}
+	}
+}

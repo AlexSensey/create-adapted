@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.createmod.catnip.impl.fabric.client.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "ParticleEngineAccessor",
+    "RenderPipelinesAccessor",
+    "TextureAtlasMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

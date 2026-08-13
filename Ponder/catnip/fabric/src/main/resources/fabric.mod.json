@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "catnip",
+  "version": "${version}",
+  "name": "Catnip",
+  "icon": "logo.png",
+  "description": "Library for Create & Ponder",
+  "authors": [
+    "${authors_json}"
+  ],
+  "contributors": [
+    "${contributors_json}"
+  ],
+  "contact": {
+    "sources": "https://github.com/Creators-of-Create/Ponder",
+    "issues": "https://github.com/Creators-of-Create/Ponder/issues"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "net.createmod.catnip.impl.fabric.CatnipFabric"
+    ],
+    "client": [
+      "net.createmod.catnip.impl.fabric.client.CatnipFabricClient"
+    ]
+  },
+  "mixins": [
+    "catnip-common.mixins.json",
+    "catnip-common-client.mixins.json",
+    "catnip-fabric-client.mixins.json"
+  ],
+  "accessWidener": "catnip.accesswidener",
+  "depends": {
+    "fabricloader": ">=${fabric_loader_version}",
+    "fabric-api": ">=${fabric_api_version}",
+    "minecraft": "${minecraft_version}"
+  }
+}

@@ -1,0 +1,273 @@
+package com.simibubi.create.content.contraptions.gantry;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.simibubi.create.AllBlocks;
+import com.simibubi.create.AllEntityTypes;
+import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
+import com.simibubi.create.content.contraptions.Contraption;
+import com.simibubi.create.content.contraptions.ContraptionCollider;
+import com.simibubi.create.content.contraptions.StructureTransform;
+import com.simibubi.create.content.kinetics.gantry.GantryShaftBlock;
+import com.simibubi.create.content.kinetics.gantry.GantryShaftBlockEntity;
+import com.simibubi.create.foundation.utility.ServerSpeedProvider;
+
+import net.createmod.catnip.platform.CatnipServices;
+import net.createmod.catnip.api.math.VecHelper;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
+
+
+public class GantryContraptionEntity extends AbstractContraptionEntity {
+
+	private static final int CLIENT_OFFSET_SYNC_GRACE_TICKS = 10;
+	private static final int CLIENT_SPEED_SYNC_GRACE_TICKS = 40;
+
+	Direction movementAxis;
+	double clientOffsetDiff;
+	double axisMotion;
+	int zeroSpeedTicks;
+	private int clientOffsetSyncGraceTicks;
+	private int clientSpeedSyncGraceTicks;
+
+	public double sequencedOffsetLimit;
+
+	public GantryContraptionEntity(EntityType<?> entityTypeIn, Level worldIn) {
+		super(entityTypeIn, worldIn);
+		sequencedOffsetLimit = -1;
+	}
+
+	public static GantryContraptionEntity create(Level world, Contraption contraption, Direction movementAxis) {
+		GantryContraptionEntity entity = new GantryContraptionEntity(AllEntityTypes.GANTRY_CONTRAPTION.get(), world);
+		entity.setContraption(contraption);
+		entity.movementAxis = movementAxis;
+		return entity;
+	}
+
+	public void limitMovement(double maxOffset) {
+		sequencedOffsetLimit = maxOffset;
+	}
+
+	@Override
+	protected void tickContraption() {
+		if (!(contraption instanceof GantryContraption))
+			return;
+
+		double prevAxisMotion = axisMotion;
+		if (level().isClientSide()) {
+			clientOffsetDiff *= .75;
+			if (clientOffsetSyncGraceTicks > 0)
+				clientOffsetSyncGraceTicks--;
+			if (clientSpeedSyncGraceTicks > 0)
+				clientSpeedSyncGraceTicks--;
+			updateClientMotion();
+		}
+
+		checkPinionShaft();
+		tickActors();
+		Vec3 movementVec = getDeltaMovement();
+
+		if (ContraptionCollider.collideBlocks(this)) {
+			if (!level().isClientSide())
+				disassemble();
+			return;
+		}
+
+		if (!isStalled() && tickCount > 2) {
+			if (sequencedOffsetLimit >= 0)
+				movementVec = VecHelper.clampComponentWise(movementVec, (float) sequencedOffsetLimit);
+			move(movementVec.x, movementVec.y, movementVec.z);
+			if (sequencedOffsetLimit > 0)
+				sequencedOffsetLimit = Math.max(0, sequencedOffsetLimit - movementVec.length());
+		}
+
+		if (Math.signum(prevAxisMotion) != Math.signum(axisMotion) && prevAxisMotion != 0)
+			contraption.stop(level());
+		if (!level().isClientSide() && (prevAxisMotion != axisMotion || tickCount % 3 == 0))
+			sendPacket();
+	}
+
+	@Override
+	public void disassemble() {
+		sequencedOffsetLimit = -1;
+		super.disassemble();
+	}
+
+	protected void checkPinionShaft() {
+		Vec3 movementVec;
+		Direction facing = ((GantryContraption) contraption).getFacing();
+		Vec3 currentPosition = getAnchorVec().add(.5, .5, .5);
+		BlockPos gantryShaftPos = BlockPos.containing(currentPosition).relative(facing.getOpposite());
+
+		BlockEntity be = level().getBlockEntity(gantryShaftPos);
+		if (!(be instanceof GantryShaftBlockEntity gantryShaftBlockEntity) || !AllBlocks.GANTRY_SHAFT.has(be.getBlockState())) {
+			if (!level().isClientSide()) {
+				setContraptionMotion(Vec3.ZERO);
+				disassemble();
+			}
+			return;
+		}
+
+		BlockState blockState = be.getBlockState();
+		Direction direction = blockState.getValue(GantryShaftBlock.FACING);
+
+		float pinionMovementSpeed = gantryShaftBlockEntity.getPinionMovementSpeed();
+		boolean powered = blockState.getValue(GantryShaftBlock.POWERED);
+		if (powered || pinionMovementSpeed == 0) {
+			setContraptionMotion(Vec3.ZERO);
+			axisMotion = 0;
+			if (!level().isClientSide() && (powered || ++zeroSpeedTicks > 5))
+				disassemble();
+			return;
+		}
+		zeroSpeedTicks = 0;
+
+		if (sequencedOffsetLimit >= 0)
+			pinionMovementSpeed = (float) Mth.clamp(pinionMovementSpeed, -sequencedOffsetLimit, sequencedOffsetLimit);
+		movementVec = Vec3.atLowerCornerOf(direction.getUnitVec3i())
+			.scale(pinionMovementSpeed);
+
+		Vec3 nextPosition = currentPosition.add(movementVec);
+		double currentCoord = direction.getAxis()
+			.choose(currentPosition.x, currentPosition.y, currentPosition.z);
+		double nextCoord = direction.getAxis()
+			.choose(nextPosition.x, nextPosition.y, nextPosition.z);
+
+		if ((Mth.floor(currentCoord) + .5 < nextCoord != (pinionMovementSpeed * direction.getAxisDirection()
+			.getStep() < 0)))
+			if (!gantryShaftBlockEntity.canAssembleOn()) {
+				setContraptionMotion(Vec3.ZERO);
+				if (!level().isClientSide())
+					disassemble();
+				return;
+			}
+
+		if (level().isClientSide())
+			return;
+
+		axisMotion = pinionMovementSpeed;
+		setContraptionMotion(movementVec);
+	}
+
+	@Override
+	protected void writeAdditional(CompoundTag compound, HolderLookup.Provider registries, boolean spawnPacket) {
+		compound.putString("GantryAxis", movementAxis.getName());
+		if (sequencedOffsetLimit >= 0)
+			compound.putDouble("SequencedOffsetLimit", sequencedOffsetLimit);
+		super.writeAdditional(compound, registries, spawnPacket);
+	}
+
+	@Override
+	protected void readAdditional(CompoundTag compound, boolean spawnData) {
+		movementAxis = Direction.byName(compound.getString("GantryAxis").orElse(Direction.UP.getName()));
+		if (movementAxis == null)
+			movementAxis = Direction.UP;
+		sequencedOffsetLimit =
+			compound.contains("SequencedOffsetLimit") ? compound.getDouble("SequencedOffsetLimit").orElse(-1d) : -1;
+		super.readAdditional(compound, spawnData);
+		if (level().isClientSide()) {
+			clientOffsetDiff = 0;
+			clientOffsetSyncGraceTicks = CLIENT_OFFSET_SYNC_GRACE_TICKS;
+			clientSpeedSyncGraceTicks = CLIENT_SPEED_SYNC_GRACE_TICKS;
+		}
+	}
+
+	@Override
+	public Vec3 applyRotation(Vec3 localPos, float partialTicks) {
+		return localPos;
+	}
+
+	@Override
+	public Vec3 reverseRotation(Vec3 localPos, float partialTicks) {
+		return localPos;
+	}
+
+	@Override
+	protected StructureTransform makeStructureTransform() {
+		return new StructureTransform(BlockPos.containing(getAnchorVec().add(.5, .5, .5)), 0, 0, 0);
+	}
+
+	@Override
+	protected float getStalledAngle() {
+		return 0;
+	}
+
+	@Override
+	public void teleportTo(double p_70634_1_, double p_70634_3_, double p_70634_5_) {
+	}
+
+	@Override
+	protected boolean isLocalClientAuthoritative() {
+		return true;
+	}
+
+	@Override
+	public void syncPacketPositionCodec(double x, double y, double z) {
+	}
+
+	@Override
+	protected void handleStallInformation(double x, double y, double z, float angle) {
+		setPosRaw(x, y, z);
+		clientOffsetDiff = 0;
+	}
+
+	@Override
+	public ContraptionRotationState getRotationState() {
+		return ContraptionRotationState.NONE;
+	}
+
+	@Override
+	public void applyLocalTransforms(PoseStack matrixStack, float partialTicks) {
+	}
+
+	public void updateClientMotion() {
+		float modifier = movementAxis.getAxisDirection()
+			.getStep();
+		double speed = axisMotion;
+		if (clientSpeedSyncGraceTicks == 0)
+			speed += clientOffsetDiff * modifier / 2d;
+		Vec3 motion = Vec3.atLowerCornerOf(movementAxis.getUnitVec3i())
+			.scale(speed * getClientSpeedScale());
+		if (sequencedOffsetLimit >= 0)
+			motion = VecHelper.clampComponentWise(motion, (float) sequencedOffsetLimit);
+		setContraptionMotion(motion);
+	}
+
+	private double getClientSpeedScale() {
+		return clientSpeedSyncGraceTicks == 0 ? ServerSpeedProvider.get() : 1;
+	}
+
+	public double getAxisCoord() {
+		Vec3 anchorVec = getAnchorVec();
+		return movementAxis.getAxis()
+			.choose(anchorVec.x, anchorVec.y, anchorVec.z);
+	}
+
+	public double getAxisMotion() {
+		return axisMotion;
+	}
+
+	public void sendPacket() {
+		CatnipServices.NETWORK.sendToClientsTrackingEntity(this,
+				new GantryContraptionUpdatePacket(getId(), getAxisCoord(), axisMotion, sequencedOffsetLimit));
+	}
+
+	public static void handlePacket(GantryContraptionUpdatePacket packet) {
+		Entity entity = Minecraft.getInstance().level.getEntity(packet.entityID());
+		if (!(entity instanceof GantryContraptionEntity ce))
+			return;
+		ce.axisMotion = packet.motion();
+		ce.clientOffsetDiff = ce.clientOffsetSyncGraceTicks > 0 ? 0 : packet.coord() - ce.getAxisCoord();
+		ce.sequencedOffsetLimit = packet.sequenceLimit();
+	}
+
+}

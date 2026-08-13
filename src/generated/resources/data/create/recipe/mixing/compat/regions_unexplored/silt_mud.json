@@ -1,0 +1,26 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "regions_unexplored"
+    }
+  ],
+  "type": "create:mixing",
+  "ingredients": [
+    {
+      "type": "neoforge:compound",
+      "ingredients": [
+        "regions_unexplored:silt_dirt"
+      ]
+    },
+    {
+      "ingredient": "minecraft:water",
+      "amount": 250
+    }
+  ],
+  "results": [
+    {
+      "id": "regions_unexplored:silt_mud"
+    }
+  ]
+}

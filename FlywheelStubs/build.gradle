@@ -1,0 +1,15 @@
+plugins {
+    id("java-library")
+}
+
+group = "dev.engine-room.flywheel"
+version = "1.0.6"
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release = 25
+}

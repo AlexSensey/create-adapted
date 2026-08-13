@@ -1,0 +1,48 @@
+# Eclipse
+bin
+*.launch
+.settings
+.metadata
+.classpath
+.project
+
+# Idea
+out
+*.ipr
+*.iws
+*.iml
+.idea
+
+# Kotlin
+.kotlin
+
+# Gradle
+build
+.gradle
+
+# Other
+eclipse
+run
+.DS_Store
+
+# Vitepress
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+
+# Node.JS
+docs/node_modules/
+docs/dist/
+docs/dist-ssr/
+docs/*.local
+
+# Editor directories and files
+docs/.vscode/*
+docs/!.vscode/extensions.json
+docs/*.suo
+docs/*.ntvs*
+docs/*.njsproj
+docs/*.sln
+docs/*.sw?
+
+# exclude generated package info files
+**/generatedPackageInfos/**

@@ -1,0 +1,25 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.createmod.catnip.impl.client.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "BufferBuilderAccessor",
+    "ClientPacketListenerAccessor",
+    "LightingAccessor",
+    "MinecraftAccessor",
+    "ParticleEngineAccessor",
+    "RenderTypeAccessor",
+    "GuiGraphicsExtractorAccessor",
+    "MinecraftMixin",
+    "ScreenMixin",
+    "ScreenAccessor",
+    "TimerAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

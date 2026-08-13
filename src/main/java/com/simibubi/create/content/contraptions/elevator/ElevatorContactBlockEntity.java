@@ -1,0 +1,170 @@
+package com.simibubi.create.content.contraptions.elevator;
+
+import java.util.List;
+
+import com.simibubi.create.content.contraptions.elevator.ElevatorColumn.ColumnCoords;
+import com.simibubi.create.content.decoration.slidingDoor.DoorControlBehaviour;
+import com.simibubi.create.content.redstone.displayLink.DisplayLinkBlock;
+import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
+import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
+
+import net.createmod.catnip.api.data.Couple;
+import net.createmod.catnip.api.nbt.NBTHelper;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+
+public class ElevatorContactBlockEntity extends SmartBlockEntity {
+
+	public DoorControlBehaviour doorControls;
+	public ColumnCoords columnCoords;
+	public boolean activateBlock;
+
+	public String shortName;
+	public String longName;
+
+	public String lastReportedCurrentFloor = "";
+
+	private int yTargetFromNBT = Integer.MIN_VALUE;
+	private boolean activeFromNBT;
+	private boolean deferNameGenerator;
+
+	public ElevatorContactBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+		super(type, pos, state);
+		shortName = "";
+		longName = "";
+		deferNameGenerator = false;
+	}
+
+	@Override
+	public void addBehaviours(List<BlockEntityBehaviour> behaviours) {
+		behaviours.add(doorControls = new DoorControlBehaviour(this));
+	}
+
+	@Override
+	protected void write(CompoundTag tag, HolderLookup.Provider registries, boolean clientPacket) {
+		super.write(tag, registries, clientPacket);
+
+		tag.putString("ShortName", shortName);
+		tag.putString("LongName", longName);
+
+		if (lastReportedCurrentFloor != null)
+			tag.putString("LastReportedCurrentFloor", lastReportedCurrentFloor);
+
+		if (clientPacket)
+			return;
+		tag.putBoolean("Activate", activateBlock);
+		if (columnCoords == null)
+			return;
+
+		ElevatorColumn column = ElevatorColumn.get(level, columnCoords);
+		if (column == null)
+			return;
+		if (column.isActive())
+			NBTHelper.putMarker(tag, "ColumnActive");
+		if (column.isTargetAvailable() && getBlockState().getValue(ElevatorContactBlock.CALLING))
+			tag.putInt("ColumnTarget", column.getTargetedYLevel());
+	}
+
+	@Override
+	protected void read(CompoundTag tag, HolderLookup.Provider registries, boolean clientPacket) {
+		super.read(tag, registries, clientPacket);
+
+		shortName = tag.getStringOr("ShortName", "");
+		longName = tag.getStringOr("LongName", "");
+
+		if (tag.contains("LastReportedCurrentFloor"))
+			lastReportedCurrentFloor = tag.getStringOr("LastReportedCurrentFloor", "");
+
+		if (clientPacket)
+			return;
+		activateBlock = tag.getBooleanOr("Activate", false);
+		boolean active = tag.contains("ColumnActive");
+		boolean calling = getBlockState().getValue(ElevatorContactBlock.CALLING);
+		boolean hasTarget = calling && tag.contains("ColumnTarget");
+		if (!active && !hasTarget)
+			return;
+
+		int target = tag.getIntOr("ColumnTarget", 0);
+
+		if (columnCoords == null) {
+			activeFromNBT = active;
+			if (hasTarget)
+				yTargetFromNBT = target;
+			return;
+		}
+
+		ElevatorColumn column = ElevatorColumn.getOrCreate(level, columnCoords);
+		if (hasTarget)
+			column.selectTarget(target);
+		column.setActive(active);
+	}
+
+	public void updateDisplayedFloor(String floor) {
+		if (floor.equals(lastReportedCurrentFloor))
+			return;
+		lastReportedCurrentFloor = floor;
+		DisplayLinkBlock.notifyGatherers(level, worldPosition);
+	}
+
+	@Override
+	public void initialize() {
+		super.initialize();
+		if (level.isClientSide())
+			return;
+		columnCoords = ElevatorContactBlock.getColumnCoords(level, worldPosition);
+		if (columnCoords == null)
+			return;
+		ElevatorColumn column = ElevatorColumn.getOrCreate(level, columnCoords);
+		column.add(worldPosition);
+		if (shortName.isBlank())
+			deferNameGenerator = true;
+		if (activeFromNBT) {
+			column.setActive(true);
+			activeFromNBT = false;
+		}
+		if (yTargetFromNBT != Integer.MIN_VALUE) {
+			column.selectTarget(yTargetFromNBT);
+			yTargetFromNBT = Integer.MIN_VALUE;
+		}
+	}
+
+	@Override
+	public void tick() {
+		super.tick();
+		if (!deferNameGenerator)
+			return;
+		if (columnCoords != null)
+			ElevatorColumn.getOrCreate(level, columnCoords)
+				.initNames(level);
+		deferNameGenerator = false;
+	}
+
+	@Override
+	public void invalidate() {
+		if (columnCoords != null) {
+			ElevatorColumn column = ElevatorColumn.get(level, columnCoords);
+			if (column != null)
+				column.remove(worldPosition);
+		}
+		super.invalidate();
+	}
+
+	public void updateName(String shortName, String longName) {
+		this.shortName = shortName;
+		this.longName = longName;
+		this.deferNameGenerator = false;
+		notifyUpdate();
+
+		ElevatorColumn column = ElevatorColumn.get(level, columnCoords);
+		if (column != null)
+			column.namesChanged();
+	}
+
+	public Couple<String> getNames() {
+		return Couple.create(shortName, longName);
+	}
+
+}

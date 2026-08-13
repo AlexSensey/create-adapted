@@ -1,0 +1,37 @@
+val compileOnly: Configuration by configurations.getting
+val commonJava: Configuration by configurations.dependencyScope("commonJava")
+val commonResources: Configuration by configurations.dependencyScope("commonResources")
+
+val commonPath = project.parent!!.path + ":common"
+
+dependencies {
+    compileOnly(project(commonPath))
+    compileOnly(project(commonPath, configuration = "commonClientOutput"))
+    commonJava(project(path = commonPath, configuration = "commonMainJava"))
+    commonJava(project(path = commonPath, configuration = "commonClientJava"))
+    commonResources(project(path = commonPath, configuration = "commonMainResources"))
+    commonResources(project(path = commonPath, configuration = "commonClientResources"))
+}
+
+val resolvableCommonJava: Configuration by configurations.resolvable("resolvableCommonJava") {
+    extendsFrom(commonJava)
+}
+
+val resolvableCommonResources: Configuration by configurations.resolvable("resolvableCommonResources") {
+    extendsFrom(commonResources)
+}
+
+tasks.named<JavaCompile>("compileJava") {
+    dependsOn(resolvableCommonJava)
+    source(resolvableCommonJava)
+}
+
+tasks.named<ProcessResources>("processResources") {
+    dependsOn(resolvableCommonResources)
+    from(resolvableCommonResources)
+}
+
+tasks.named<Jar>("sourcesJar") {
+    dependsOn(resolvableCommonJava, resolvableCommonResources)
+    from(resolvableCommonJava, resolvableCommonResources)
+}

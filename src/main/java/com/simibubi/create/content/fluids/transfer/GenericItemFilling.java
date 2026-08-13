@@ -1,0 +1,159 @@
+package com.simibubi.create.content.fluids.transfer;
+
+import com.simibubi.create.AllFluids;
+import com.simibubi.create.AllItems;
+import com.simibubi.create.content.fluids.potion.PotionFluidHandler;
+import com.simibubi.create.foundation.fluid.FluidHelper;
+
+import net.minecraft.world.item.BucketItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.PotionContents;
+import net.minecraft.world.item.alchemy.Potions;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
+import net.neoforged.neoforge.fluids.capability.IFluidHandlerItem;
+import net.neoforged.neoforge.fluids.capability.wrappers.FluidBucketWrapper;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.access.ItemAccess;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.item.VanillaContainerWrapper;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+
+public class GenericItemFilling {
+
+	/**
+	 * Checks if an ItemStack's IFluidHandlerItem is valid. Ideally, this check would
+	 * not be necessary. Unfortunately, some mods that copy the functionality of the
+	 * MilkBucketItem copy the FluidBucketWrapper capability that is patched in by
+	 * Forge without looking into what it actually does. In all cases this is
+	 * incorrect because having a non-bucket item turn into a bucket item does not
+	 * make sense.
+	 *
+	 * <p>This check is only necessary for filling since a FluidBucketWrapper will be
+	 * empty if it is initialized with a non-bucket item.
+	 *
+	 * @param stack The ItemStack.
+	 * @param fluidHandler The IFluidHandlerItem instance retrieved from the ItemStack.
+	 * @return If the IFluidHandlerItem is valid for the passed ItemStack.
+	 */
+	public static boolean isFluidHandlerValid(ItemStack stack, IFluidHandlerItem fluidHandler) {
+		// Not instanceof in case a correct subclass is made
+		if (fluidHandler.getClass() == FluidBucketWrapper.class) {
+			Item item = stack.getItem();
+			// Forge does not patch the FluidBucketWrapper onto subclasses of BucketItem
+			if (item.getClass() != BucketItem.class && item != Items.MILK_BUCKET) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	public static boolean canItemBeFilled(Level world, ItemStack stack) {
+		if (stack.getItem() == Items.GLASS_BOTTLE)
+			return true;
+		if (stack.getItem() == Items.MILK_BUCKET)
+			return false;
+
+		ResourceHandler<FluidResource> capability = accessForSingleItem(stack.copy())
+			.getCapability(Capabilities.Fluid.ITEM);
+		if (capability == null)
+			return false;
+		return true;
+	}
+
+	public static int getRequiredAmountForItem(Level world, ItemStack stack, FluidStack availableFluid) {
+		if (stack.getItem() == Items.GLASS_BOTTLE && canFillGlassBottleInternally(availableFluid))
+			return PotionFluidHandler.getRequiredAmountForFilledBottle(stack, availableFluid);
+		if (stack.getItem() == Items.BUCKET && canFillBucketInternally(availableFluid))
+			return 1000;
+
+		if (stack.getItem() == Items.BUCKET) {
+			Item filledBucket = availableFluid.getFluid()
+				.getBucket();
+			if (filledBucket == null || filledBucket == Items.AIR)
+				return -1;
+			return 1000;
+		}
+
+		ResourceHandler<FluidResource> capability = accessForSingleItem(stack.copy())
+			.getCapability(Capabilities.Fluid.ITEM);
+		if (capability == null)
+			return -1;
+		try (Transaction transaction = Transaction.openRoot()) {
+			int filled = capability.insert(FluidResource.of(availableFluid), availableFluid.getAmount(), transaction);
+			return filled == 0 ? -1 : filled;
+		}
+	}
+
+	private static boolean canFillGlassBottleInternally(FluidStack availableFluid) {
+		Fluid fluid = availableFluid.getFluid();
+		if (fluid.isSame(Fluids.WATER))
+			return true;
+		if (fluid.isSame(AllFluids.POTION.get()))
+			return true;
+		if (fluid.isSame(AllFluids.TEA.get()))
+			return true;
+		return false;
+	}
+
+	private static boolean canFillBucketInternally(FluidStack availableFluid) {
+		return false;
+	}
+
+	public static ItemStack fillItem(Level world, int requiredAmount, ItemStack stack, FluidStack availableFluid) {
+		FluidStack toFill = availableFluid.copy();
+		toFill.setAmount(requiredAmount);
+		availableFluid.shrink(requiredAmount);
+
+		if (stack.getItem() == Items.GLASS_BOTTLE && canFillGlassBottleInternally(toFill)) {
+			ItemStack fillBottle;
+			Fluid fluid = toFill.getFluid();
+			if (FluidHelper.isWater(fluid))
+				fillBottle = PotionContents.createItemStack(Items.POTION, Potions.WATER);
+			else if (fluid.isSame(AllFluids.TEA.get()))
+				fillBottle = AllItems.BUILDERS_TEA.asStack();
+			else
+				fillBottle = PotionFluidHandler.fillBottle(stack, toFill);
+			stack.shrink(1);
+			return fillBottle;
+		}
+
+		if (stack.getItem() == Items.BUCKET) {
+			Item filledBucket = toFill.getFluid()
+				.getBucket();
+			if (filledBucket == null || filledBucket == Items.AIR)
+				return ItemStack.EMPTY;
+			stack.shrink(1);
+			return new ItemStack(filledBucket);
+		}
+
+		ItemStack split = stack.copy();
+		split.setCount(1);
+		ItemAccess itemAccess = accessForSingleItem(split);
+		ResourceHandler<FluidResource> capability = itemAccess.getCapability(Capabilities.Fluid.ITEM);
+		if (capability == null)
+			return ItemStack.EMPTY;
+		try (Transaction transaction = Transaction.openRoot()) {
+			int filled = capability.insert(FluidResource.of(toFill), requiredAmount, transaction);
+			if (filled != requiredAmount)
+				return ItemStack.EMPTY;
+			transaction.commit();
+			ItemStack container = itemAccess.getResource()
+				.toStack(itemAccess.getAmount());
+			stack.shrink(1);
+			return container;
+		}
+	}
+
+	private static ItemAccess accessForSingleItem(ItemStack stack) {
+		return ItemAccess.forHandlerIndexStrict(VanillaContainerWrapper.of(new SimpleContainer(stack)), 0);
+	}
+
+}
