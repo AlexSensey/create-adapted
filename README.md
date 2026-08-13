@@ -98,3 +98,12 @@ Open an issue with:
 
 Future updates will focus on wider mod compatibility, rendering and animation
 fixes, optional integrations, and support for newer NeoForge and JEI versions.
+
+## Support the project
+
+If you would like to support the development, testing, and maintenance of
+Create: Adapted, you can [donate through StreamElements](https://streamelements.com/bugsgify/tip).
+
+Donations support this unofficial adaptation only. They do not provide access
+to the original Create assets and are not connected to the official Create
+development team.
