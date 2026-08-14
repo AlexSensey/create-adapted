@@ -1,6 +1,6 @@
 # Create 26.2 adaptation — external assets edition
 
-Adaptation version: **0.8**
+Adaptation version: **0.81**
 
 Compatibility target:
 
