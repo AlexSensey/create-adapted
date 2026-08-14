@@ -46,7 +46,7 @@ public final class ExternalCreateAssets {
 	public static final String OFFICIAL_CREATE_VERSION = "6.0.10";
 	public static final String OFFICIAL_MINECRAFT_VERSION = "1.21.1";
 	public static final String TARGET_MINECRAFT_VERSION = "26.2";
-	public static final String TESTED_NEOFORGE_VERSION = "26.2.0.18-beta";
+	public static final String TESTED_NEOFORGE_VERSION = "26.2.0.59";
 	public static final String DOWNLOAD_URL =
 		"https://www.curseforge.com/minecraft/mc-mods/create/files/all?page=1&pageSize=20&version=1.21.1";
 

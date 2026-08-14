@@ -8,6 +8,7 @@ import com.simibubi.create.content.schematics.SchematicItem;
 import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.widget.IconButton;
+import com.simibubi.create.foundation.gui.widget.FilteringEditBox;
 import com.simibubi.create.foundation.gui.widget.Label;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.gui.widget.SelectionScrollInput;
@@ -91,7 +92,7 @@ public class SchematicEditScreen extends AbstractSimiScreen {
 	}
 
 	private EditBox coordinateInput(int x, int y) {
-		EditBox input = new EditBox(font, x, y, 34, 10, CommonComponents.EMPTY);
+		FilteringEditBox input = new FilteringEditBox(font, x, y, 34, 10, CommonComponents.EMPTY);
 		input.setMaxLength(7);
 		input.setBordered(false);
 		input.setTextColor(0xFFFFFFFF);

@@ -3,6 +3,7 @@ package com.simibubi.create.foundation.gui;
 import java.util.function.BiConsumer;
 
 import com.simibubi.create.foundation.gui.widget.Label;
+import com.simibubi.create.foundation.gui.widget.FilteringEditBox;
 import com.simibubi.create.foundation.gui.widget.ScrollInput;
 import com.simibubi.create.foundation.gui.widget.SelectionScrollInput;
 import com.simibubi.create.foundation.gui.widget.TooltipArea;
@@ -62,7 +63,7 @@ public class ModularGuiLineBuilder {
 
 	public ModularGuiLineBuilder addIntegerTextInput(int x, int width, BiConsumer<EditBox, TooltipArea> inputTransform,
 													 String dataKey) {
-		return addTextInput(x, width, inputTransform.andThen((editBox, $) -> editBox.setFilter(s -> {
+		return addTextInput(x, width, inputTransform.andThen((editBox, $) -> ((FilteringEditBox) editBox).setFilter(s -> {
 			if (s.isEmpty())
 				return true;
 			try {
@@ -76,7 +77,7 @@ public class ModularGuiLineBuilder {
 
 	public ModularGuiLineBuilder addTextInput(int x, int width, BiConsumer<EditBox, TooltipArea> inputTransform,
 											  String dataKey) {
-		EditBox input = new EditBox(font, x + this.x + 5, y, width - 9, 10, CommonComponents.EMPTY);
+		EditBox input = new FilteringEditBox(font, x + this.x + 5, y, width - 9, 10, CommonComponents.EMPTY);
 		input.setBordered(false);
 		input.setTextColor(-1);
 		input.setTextColorUneditable(-1);

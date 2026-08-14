@@ -17,7 +17,7 @@ to the newer game version.
 ## Compatibility
 
 - Minecraft 26.2
-- NeoForge 26.2.0.18-beta
+- NeoForge 26.2.0.59
 - Create: Adapted 0.8
 - External asset source: official Create 6.0.10 for Minecraft 1.21.1
 - Optional JEI integration tested with JEI 30.11.0.67
@@ -29,7 +29,7 @@ internal APIs may require separate updates.
 
 ## Installation
 
-1. Install NeoForge 26.2.0.18-beta.
+1. Install NeoForge 26.2.0.59.
 2. Put `create-26.2-0.8-public-external-assets.jar` in the game instance's
    `mods` folder.
 3. Launch the game once. Create: Adapted will create a `create_original`

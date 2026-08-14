@@ -16,6 +16,7 @@ import com.simibubi.create.content.trains.graph.EdgePointType;
 import com.simibubi.create.content.trains.schedule.ScheduleRuntime;
 import com.simibubi.create.content.trains.station.GlobalStation;
 import com.simibubi.create.foundation.utility.CreateLang;
+import com.simibubi.create.foundation.gui.widget.FilteringEditBox;
 
 import net.createmod.catnip.api.data.Glob;
 import net.createmod.catnip.api.data.Pair;
@@ -69,7 +70,7 @@ public class DestinationInstruction extends TextScheduleInstruction {
 
 	@Override
 	protected void modifyEditBox(EditBox box) {
-		box.setFilter(s -> StringUtils.countMatches(s, '*') <= 3);
+		((FilteringEditBox) box).setFilter(s -> StringUtils.countMatches(s, '*') <= 3);
 	}
 
 	@Override

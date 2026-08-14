@@ -15,7 +15,7 @@ import net.neoforged.fml.config.ModConfigs;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen.ConfigurationSectionScreen;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen.ConfigurationSectionScreen.Context;
-import net.neoforged.neoforge.client.gui.ModListScreen;
+import net.neoforged.neoforge.client.gui.modlist.ModListScreen;
 
 public class CreateConfigScreen extends Screen {
 	private final Screen parent;
@@ -49,7 +49,7 @@ public class CreateConfigScreen extends Screen {
 		addRenderableWidget(gameplay);
 
 		addRenderableWidget(Button.builder(Component.literal("Other Mods' Configurations"),
-			$ -> ScreenOpener.open(new ModListScreen(this)))
+			$ -> ScreenOpener.open(ModListScreen.create(this)))
 			.bounds(center - 100, top + 100, 200, 20)
 			.build());
 

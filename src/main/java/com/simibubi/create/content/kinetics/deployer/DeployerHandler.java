@@ -175,7 +175,7 @@ public class DeployerHandler {
 			entity.captureDrops(capturedDrops);
 
 			if (mode == Mode.USE) {
-				InteractionResult cancelResult = CommonHooks.onInteractEntity(player, entity, hand);
+				InteractionResult cancelResult = CommonHooks.onInteractEntity(player, entity, hand, Vec3.ZERO);
 				if (cancelResult == InteractionResult.FAIL) {
 					entity.captureDrops(null);
 					return;
