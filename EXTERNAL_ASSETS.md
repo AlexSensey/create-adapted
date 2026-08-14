@@ -5,7 +5,8 @@ Adaptation version: **0.81**
 Compatibility target:
 
 - Minecraft: **26.2**
-- NeoForge: **26.2.0.18-beta** (exact tested version)
+- NeoForge: **26.2.0.57 or newer in the 26.2 series**
+- Tested with NeoForge: **26.2.0.57, 26.2.0.58, and 26.2.0.59**
 - Official asset source: **Create 6.0.10 for Minecraft 1.21.1**
 
 The public jar does not contain upstream Create textures, models, sounds,

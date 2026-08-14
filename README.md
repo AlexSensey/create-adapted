@@ -17,15 +17,26 @@ to the newer game version.
 ## Compatibility
 
 - Minecraft 26.2
-- NeoForge 26.2.0.57 or newer in the 26.2 series (tested with 26.2.0.59)
+- NeoForge 26.2.0.57 or newer in the 26.2 series
+- Tested with NeoForge 26.2.0.57, 26.2.0.58, and 26.2.0.59
 - Create: Adapted 0.81
 - External asset source: official Create 6.0.10 for Minecraft 1.21.1
-- Optional JEI integration tested with JEI 30.11.0.67
+- Optional JEI integration tested with JEI 30.21.0.156
 - Java 25
 
 Compatibility with every Minecraft 26.2 mod is not guaranteed. Mods that
 directly integrate with Create, Flywheel, Registrate, Ponder, or Create's
 internal APIs may require separate updates.
+
+## Check compatibility before downloading
+
+Different Create: Adapted releases may target different Minecraft, NeoForge,
+JEI, or external asset versions. Always check the description and changelog of
+the specific file before installing or updating it.
+
+Older files may target beta versions of NeoForge and may not work with the
+current stable release. Compatibility information for the newest release does
+not automatically apply to older files.
 
 ## Installation
 
