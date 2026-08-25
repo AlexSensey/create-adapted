@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/AlexSensey/create-adapted/releases/latest"><img src="https://img.shields.io/github/v/release/AlexSensey/create-adapted?logo=github&label=release" alt="Latest release"></a>
-  <a href="https://github.com/AlexSensey/create-adapted/releases"><img src="https://img.shields.io/github/downloads/AlexSensey/create-adapted/total?logo=github&label=downloads" alt="GitHub downloads"></a>
+  <a href="https://github.com/AlexSensey/create-adapted/releases/latest"><img src="https://img.shields.io/github/v/release/AlexSensey/create-adapted?logo=github&label=release&cacheSeconds=60" alt="Latest release"></a>
+  <a href="https://github.com/AlexSensey/create-adapted/releases"><img src="https://img.shields.io/github/downloads/AlexSensey/create-adapted/total?logo=github&label=downloads&cacheSeconds=60" alt="GitHub downloads"></a>
   <a href="https://www.curseforge.com/minecraft/mc-mods/create-adapted"><img src="https://img.shields.io/badge/CurseForge-Create%3A%20Adapted-f16436?logo=curseforge" alt="CurseForge"></a>
 </p>
 
