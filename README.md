@@ -5,7 +5,8 @@
 <p align="center">
   <a href="https://github.com/AlexSensey/create-adapted/releases/latest"><img src="https://img.shields.io/github/v/release/AlexSensey/create-adapted?logo=github&label=release&cacheSeconds=60" alt="Latest release"></a>
   <a href="https://github.com/AlexSensey/create-adapted/releases"><img src="https://img.shields.io/github/downloads/AlexSensey/create-adapted/total?logo=github&label=downloads&cacheSeconds=60" alt="GitHub downloads"></a>
-  <a href="https://www.curseforge.com/minecraft/mc-mods/create-adapted"><img src="https://img.shields.io/curseforge/v/1651484?logo=curseforge&label=CurseForge&cacheSeconds=300" alt="Latest CurseForge version"></a>
+  <img src="https://img.shields.io/badge/Minecraft-26.2-62b47a" alt="Minecraft 26.2">
+  <img src="https://img.shields.io/badge/NeoForge-26.2-orange" alt="NeoForge 26.2">
 </p>
 
 # Create: Adapted
