@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="branding/create-adapted-logo.png" alt="Create: Adapted logo" width="256">
+  <img src="branding/create-adapted-mod-icon.png" alt="Create: Adapted logo" width="256">
 </p>
 
 <p align="center">
