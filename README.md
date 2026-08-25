@@ -1,13 +1,19 @@
 <p align="center">
-  <img src="branding/create-adapted-logo.png" alt="Create: Adapted logo" width="300">
+  <img src="branding/create-adapted-logo.png" alt="Create: Adapted logo" width="256">
+</p>
+
+<p align="center">
+  <a href="https://github.com/AlexSensey/create-adapted/releases/latest"><img src="https://img.shields.io/github/v/release/AlexSensey/create-adapted?logo=github&label=release" alt="Latest release"></a>
+  <a href="https://github.com/AlexSensey/create-adapted/releases"><img src="https://img.shields.io/github/downloads/AlexSensey/create-adapted/total?logo=github&label=downloads" alt="GitHub downloads"></a>
+  <a href="https://www.curseforge.com/minecraft/mc-mods/create-adapted"><img src="https://img.shields.io/badge/CurseForge-Create%3A%20Adapted-f16436?logo=curseforge" alt="CurseForge"></a>
 </p>
 
 # Create: Adapted
 
-Create: Adapted is an unofficial adaptation of Create 6.0.10 for Minecraft
-26.2 and NeoForge. It ports Create's mechanical automation, kinetic systems,
+Create: Adapted is an unofficial NeoForge adaptation of Create for newer
+Minecraft versions. It brings Create's mechanical automation, kinetic systems,
 moving contraptions, processing machines, trains, tools, and decorative blocks
-to the newer game version.
+to versions not yet supported by the original project.
 
 > [!IMPORTANT]
 > This is an experimental community adaptation. It is not affiliated with or
@@ -16,41 +22,39 @@ to the newer game version.
 
 ## Compatibility
 
-- Minecraft 26.2
-- NeoForge 26.2.0.57 or newer in the 26.2 series
-- Tested with NeoForge 26.2.0.57, 26.2.0.58, and 26.2.0.59
-- Create: Adapted 0.81
-- External asset source: official Create 6.0.10 for Minecraft 1.21.1
-- Optional JEI integration tested with JEI 30.21.0.156
-- Java 25
+- NeoForge 26.2.0.57 or newer
+- The supported Minecraft version and required official Create asset version
+  are listed on each release page.
+- JEI integration is optional.
 
-Compatibility with every Minecraft 26.2 mod is not guaranteed. Mods that
+Compatibility with every third-party mod is not guaranteed. Mods that
 directly integrate with Create, Flywheel, Registrate, Ponder, or Create's
 internal APIs may require separate updates.
 
 ## Check compatibility before downloading
 
 Different Create: Adapted releases may target different Minecraft, NeoForge,
-JEI, or external asset versions. Always check the description and changelog of
-the specific file before installing or updating it.
+JEI, or external asset versions. Always check the release notes and changelog
+of the specific file before installing or updating it.
 
-Older files may target beta versions of NeoForge and may not work with the
-current stable release. Compatibility information for the newest release does
-not automatically apply to older files.
+Compatibility information for the newest release does not automatically apply
+to older files.
 
 ## Installation
 
-1. Install NeoForge 26.2.0.57 or newer in the 26.2 series.
-2. Put `create-adapted-26.2-0.81-neoforge-26.2.0.57-or-newer-public-external-assets.jar` in the game instance's
-   `mods` folder.
+1. Install NeoForge 26.2.0.57 or newer.
+2. Download the appropriate Create: Adapted jar from
+   [GitHub Releases](https://github.com/AlexSensey/create-adapted/releases/latest)
+   or [CurseForge](https://www.curseforge.com/minecraft/mc-mods/create-adapted),
+   then put it in the game instance's `mods` folder.
 3. Launch the game once. Create: Adapted will create a `create_original`
    folder in the game directory.
-4. Download `create-1.21.1-6.0.10.jar` from the
-   [official Create CurseForge page](https://www.curseforge.com/minecraft/mc-mods/create/files/all?page=1&pageSize=20&version=1.21.1).
+4. Download the official Create jar specified in the selected release notes
+   from the [official Create CurseForge page](https://www.curseforge.com/minecraft/mc-mods/create/files/all).
 5. Put the official jar in `<game directory>/create_original/` and restart the
    game.
 
-Do **not** put the original Create 6.0.10 jar in `mods`. Both jars use the
+Do **not** put the original Create jar in `mods`. Both jars use the
 `create` mod id, so doing that would cause a duplicate-mod conflict.
 
 The adapted Flywheel, Ponder, Catnip, and Registrate libraries are embedded.
@@ -63,8 +67,8 @@ This public repository and its release jar do not redistribute Create's
 original textures, models, sounds, fonts, or artwork. The upstream project
 marks those assets All Rights Reserved.
 
-At runtime, the client mounts resources from the official Create jar supplied
-by the player. The original jar's program code is not added to the mod
+At runtime, the client mounts resources from the compatible official Create
+jar supplied by the player. The original jar's program code is not added to the mod
 classpath and is not executed. Only its resources are used.
 
 The source code is available under the [MIT License](LICENSE.md). The original
@@ -76,20 +80,17 @@ See [EXTERNAL_ASSETS.md](EXTERNAL_ASSETS.md) for the complete asset setup.
 ## Dedicated servers
 
 A dedicated server needs only the Create: Adapted jar in its `mods` folder.
-The official Create 6.0.10 asset jar is client-side and is not required on the
-server. Every connecting player must configure their local `create_original`
-folder.
+The official Create asset jar is client-side and is not required on the server.
+Every connecting player must configure their local `create_original` folder.
 
 ## Rendering
 
-The public external-assets edition defaults to Flywheel's compatibility
-renderer (`flywheel:off`) for reliable rendering of resources mounted at
-runtime. This setting does not disable Create machines, movement, or
-animations.
+Create: Adapted includes its adapted Flywheel renderer for Create machinery,
+contraptions, trains, and animated components.
 
 ## Building
 
-Use Java 25 and run:
+Run:
 
 ```text
 ./gradlew build
