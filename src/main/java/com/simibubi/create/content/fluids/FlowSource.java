@@ -95,7 +95,7 @@ public abstract class FlowSource {
 				fluidHandlerCache = ICapabilityProvider.of(hosePulley::getFluidHandlerForPipe);
 				return;
 			}
-			if (level instanceof ServerLevel serverLevel && !(level instanceof PonderLevel)) {
+			if (level instanceof ServerLevel serverLevel) {
 				ICapabilityProvider<ResourceHandler<FluidResource>> resourceCache = ICapabilityProvider.of((invalidate) -> BlockCapabilityCache.create(
 					Capabilities.Fluid.BLOCK,
 					serverLevel,
