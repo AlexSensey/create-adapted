@@ -12,7 +12,6 @@ import com.simibubi.create.content.fluids.hosePulley.HosePulleyBlock;
 import com.simibubi.create.content.fluids.hosePulley.HosePulleyBlockEntity;
 
 import net.createmod.catnip.api.math.BlockFace;
-import net.createmod.ponder.api.client.level.PonderLevel;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -95,7 +94,7 @@ public abstract class FlowSource {
 				fluidHandlerCache = ICapabilityProvider.of(hosePulley::getFluidHandlerForPipe);
 				return;
 			}
-			if (level instanceof ServerLevel serverLevel && !(level instanceof PonderLevel)) {
+			if (level instanceof ServerLevel serverLevel) {
 				ICapabilityProvider<ResourceHandler<FluidResource>> resourceCache = ICapabilityProvider.of((invalidate) -> BlockCapabilityCache.create(
 					Capabilities.Fluid.BLOCK,
 					serverLevel,
@@ -111,7 +110,7 @@ public abstract class FlowSource {
 					ResourceHandler<FluidResource> handler = resourceCache.getCapability();
 					return handler == null ? null : new ResourceHandlerFluidAdapter(handler);
 				});
-			} else if (level instanceof PonderLevel) {
+			} else {
 				fluidHandlerCache = ICapabilityProvider.of(() -> {
 					ResourceHandler<FluidResource> handler = level.getCapability(
 						Capabilities.Fluid.BLOCK,
