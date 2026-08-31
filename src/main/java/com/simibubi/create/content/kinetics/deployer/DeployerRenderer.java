@@ -15,8 +15,10 @@ import com.simibubi.create.content.contraptions.render.ContraptionMatrices;
 import com.simibubi.create.foundation.blockEntity.behaviour.filtering.FilteringBehaviour;
 import com.simibubi.create.foundation.blockEntity.renderer.SafeBlockEntityRenderer;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
+import com.simibubi.create.infrastructure.assets.ExternalCreateAssets;
+import com.simibubi.create.content.kinetics.base.KineticBlockEntityRenderer;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 import com.simibubi.create.foundation.render.FlatGuiItemRenderer;
 import com.simibubi.create.foundation.virtualWorld.VirtualRenderWorld;
 
@@ -27,6 +29,7 @@ import net.createmod.catnip.impl.client.render.MultiBufferSource;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.BlockModelRenderState;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
@@ -37,6 +40,7 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.BlockItem;
@@ -102,7 +106,9 @@ public class DeployerRenderer extends SafeBlockEntityRenderer<DeployerBlockEntit
 
 		float partialTicks = deployerState.partialTicks;
 		float handDistance = getHandDistance(deployerState, partialTicks);
-		if (VisualizationManager.supportsVisualization(be.getLevel())) {
+		if (ExternalCreateAssets.isExternalEdition())
+			renderExternalShaft(be, partialTicks, ms, collector, state.lightCoords);
+		if (CreateVisualizationManager.supportsVisualization(be.getLevel())) {
 			renderHeldItem(be, deployerState, handDistance, partialTicks, ms, collector, state.lightCoords);
 			return;
 		}
@@ -133,6 +139,34 @@ public class DeployerRenderer extends SafeBlockEntityRenderer<DeployerBlockEntit
 		// Held items are independent render content. A temporarily unavailable
 		// standalone pole/hand model must not make the Deployer inventory invisible.
 		renderHeldItem(be, deployerState, handDistance, partialTicks, ms, collector, state.lightCoords);
+	}
+
+	private static void renderExternalShaft(DeployerBlockEntity be, float partialTicks, PoseStack ms,
+		SubmitNodeCollector collector, int light) {
+		Direction.Axis rotationAxis = KineticBlockEntityRenderer.getRotationAxisOf(be);
+		BlockState shaftState = KineticBlockEntityRenderer.shaft(rotationAxis);
+		BlockStateModel shaftModel = Minecraft.getInstance()
+			.getModelManager()
+			.getBlockStateModelSet()
+			.get(shaftState);
+		List<BlockStateModelPart> shaftParts = new java.util.ArrayList<>();
+		shaftModel.collectParts(RandomSource.create(shaftState.getSeed(be.getBlockPos())), shaftParts);
+		if (shaftParts.isEmpty())
+			return;
+
+		float angle = KineticBlockEntityRenderer.getAngleForBe(be, be.getBlockPos(), rotationAxis, partialTicks);
+
+		ms.pushPose();
+		ms.translate(.5, .5, .5);
+		ms.mulPose(switch (rotationAxis) {
+			case X -> Axis.XP.rotation(angle);
+			case Y -> Axis.YP.rotation(angle);
+			case Z -> Axis.ZP.rotation(angle);
+		});
+		ms.translate(-.5, -.5, -.5);
+		collector.submitBlockModel(ms, RenderTypes.cutoutMovingBlock(), shaftParts,
+			BlockModelRenderState.EMPTY_TINTS, light, OverlayTexture.NO_OVERLAY, 0);
+		ms.popPose();
 	}
 
 	public static void renderInContraption(MovementContext context, VirtualRenderWorld renderWorld,

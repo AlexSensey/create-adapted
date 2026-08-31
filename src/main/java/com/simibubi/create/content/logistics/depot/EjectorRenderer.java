@@ -10,7 +10,7 @@ import com.simibubi.create.content.kinetics.base.ShaftRenderer;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueLabelRenderer;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import dev.engine_room.flywheel.lib.transform.TransformStack;
 import dev.engine_room.flywheel.lib.transform.Rotate;
@@ -42,7 +42,8 @@ public class EjectorRenderer extends ShaftRenderer<EjectorBlockEntity> {
 		super(context);
 	}
 
-	public boolean shouldRenderOffScreen(EjectorBlockEntity be) {
+	@Override
+	public boolean shouldRenderOffScreen() {
 		return true;
 	}
 
@@ -67,7 +68,7 @@ public class EjectorRenderer extends ShaftRenderer<EjectorBlockEntity> {
 		float angle = lidProgress * 70;
 
 		List<BlockStateModelPart> top = getTopModel();
-		if (!VisualizationManager.supportsVisualization(be.getLevel()) && !top.isEmpty()) {
+		if (!CreateVisualizationManager.supportsVisualization(be.getLevel()) && !top.isEmpty()) {
 			ms.pushPose();
 			applyLidAngle(be, angle, ms);
 			collector.submitBlockModel(ms, RenderTypes.cutoutMovingBlock(), top, BlockModelRenderState.EMPTY_TINTS,

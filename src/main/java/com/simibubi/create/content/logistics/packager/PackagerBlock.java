@@ -113,7 +113,8 @@ public class PackagerBlock extends WrenchableDirectionalBlock implements IBE<Pac
 						return ItemInteractionResult.SUCCESS;
 					if (!be.unwrapBox(stack.copy(), true))
 						return ItemInteractionResult.SUCCESS;
-					be.unwrapBox(stack.copy(), false);
+					if (!be.unwrapBox(stack.copy(), false))
+						return ItemInteractionResult.SUCCESS;
 					be.triggerStockCheck();
 					stack.shrink(1);
 					AllSoundEvents.DEPOT_PLOP.playOnServer(level, pos);
@@ -174,6 +175,13 @@ public class PackagerBlock extends WrenchableDirectionalBlock implements IBE<Pac
 
 	public void onRemove(BlockState pState, Level pLevel, BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
 		IBE.onRemove(pState, pLevel, pPos, pNewState);
+	}
+
+	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+										   BlockPos pos, boolean isMoving) {
+		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
 	}
 
 	@Override

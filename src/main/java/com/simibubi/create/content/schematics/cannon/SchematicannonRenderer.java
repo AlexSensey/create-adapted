@@ -11,7 +11,7 @@ import com.simibubi.create.content.schematics.cannon.LaunchedItem.ForBlockState;
 import com.simibubi.create.content.schematics.cannon.LaunchedItem.ForEntity;
 import com.simibubi.create.foundation.blockEntity.renderer.SafeBlockEntityRenderer;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
 import net.minecraft.client.Minecraft;
@@ -74,7 +74,7 @@ public class SchematicannonRenderer extends SafeBlockEntityRenderer<Schematicann
 			return;
 
 		renderLaunchedBlocks(blockEntity, cannonState.partialTicks, poseStack, collector, state.lightCoords);
-		if (VisualizationManager.supportsVisualization(blockEntity.getLevel()))
+		if (CreateVisualizationManager.supportsVisualization(blockEntity.getLevel()))
 			return;
 		double[] angles = getCannonAngles(blockEntity, blockEntity.getBlockPos(), cannonState.partialTicks);
 		double yaw = angles[0];

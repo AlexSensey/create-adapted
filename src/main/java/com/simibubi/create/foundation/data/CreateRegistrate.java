@@ -39,6 +39,7 @@ import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.Entity;
@@ -212,7 +213,7 @@ public class CreateRegistrate extends AbstractRegistrate<CreateRegistrate> {
 	}
 
 	public <T extends BaseFlowingFluid> FluidBuilder<T, CreateRegistrate> virtualFluid(String name,
-																						ResourceLocation still, ResourceLocation flow, FluidBuilder.FluidTypeFactory typeFactory,
+																			Identifier still, Identifier flow, FluidBuilder.FluidTypeFactory typeFactory,
 																						NonNullFunction<BaseFlowingFluid.Properties, T> sourceFactory, NonNullFunction<BaseFlowingFluid.Properties, T> flowingFactory) {
 		return entry(name, c -> new VirtualFluidBuilder<>(self(), self(), name, c, still, flow, typeFactory, sourceFactory, flowingFactory));
 	}
@@ -224,8 +225,8 @@ public class CreateRegistrate extends AbstractRegistrate<CreateRegistrate> {
 				CreateRegistrate::defaultFluidType, VirtualFluid::createSource, VirtualFluid::createFlowing));
 	}
 
-	public FluidBuilder<VirtualFluid, CreateRegistrate> virtualFluid(String name, ResourceLocation still,
-																	 ResourceLocation flow) {
+	public FluidBuilder<VirtualFluid, CreateRegistrate> virtualFluid(String name, Identifier still,
+																		 Identifier flow) {
 		return entry(name, c -> new VirtualFluidBuilder<>(self(), self(), name, c, still, flow,
 			CreateRegistrate::defaultFluidType, VirtualFluid::createSource, VirtualFluid::createFlowing));
 	}
@@ -240,14 +241,14 @@ public class CreateRegistrate extends AbstractRegistrate<CreateRegistrate> {
 			typeFactory);
 	}
 
-	public static FluidType defaultFluidType(FluidType.Properties properties, ResourceLocation stillTexture,
-											 ResourceLocation flowingTexture) {
+	public static FluidType defaultFluidType(FluidType.Properties properties, Identifier stillTexture,
+											 Identifier flowingTexture) {
 		return new FluidType(properties) {
 		};
 	}
 
-	private ResourceLocation modResource(String path) {
-		return ResourceLocation.fromNamespaceAndPath(getModid(), path);
+	private Identifier modResource(String path) {
+		return Identifier.fromNamespaceAndPath(getModid(), path);
 	}
 
 	/* Util */

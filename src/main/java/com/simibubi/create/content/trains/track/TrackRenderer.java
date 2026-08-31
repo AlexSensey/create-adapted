@@ -433,7 +433,8 @@ public class TrackRenderer extends SafeBlockEntityRenderer<TrackBlockEntity> {
 		return new Vec3(pitch, yaw, roll);
 	}
 
-	public boolean shouldRenderOffScreen(TrackBlockEntity be) {
+	@Override
+	public boolean shouldRenderOffScreen() {
 		return true;
 	}
 

@@ -17,7 +17,7 @@ public record ContraptionDisassemblyPacket(int entityId, StructureTransform tran
 
 	@Override
 	public void handle(Player player) {
-		AbstractContraptionEntity.handleDisassemblyPacket(this);
+		ContraptionPacketClient.handleDisassembly(this);
 	}
 
 	@Override

@@ -124,7 +124,7 @@ public class CurvedTrackInteraction {
 				player.swing(InteractionHand.MAIN_HAND);
 				return true;
 			}
-			if (item instanceof TrackTargetingBlockItem ttbi && ttbi.useOnCurve(result, heldItem)) {
+			if (item instanceof TrackTargetingBlockItem && TrackTargetingClient.useOnCurve(result)) {
 				player.swing(InteractionHand.MAIN_HAND);
 				return true;
 			}

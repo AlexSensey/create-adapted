@@ -1,8 +1,6 @@
 package com.simibubi.create.content.equipment.zapper;
 
 import com.simibubi.create.AllPackets;
-import com.simibubi.create.CreateClient;
-import com.simibubi.create.content.equipment.zapper.ZapperRenderHandler.LaserBeam;
 
 import net.createmod.catnip.api.data.codec.stream.CatnipStreamCodecs;
 import io.netty.buffer.ByteBuf;
@@ -27,14 +25,8 @@ public class ZapperBeamPacket extends ShootGadgetPacket {
 		this.target = target;
 	}
 
-	@Override
-	protected ShootableGadgetRenderHandler getHandler() {
-		return CreateClient.ZAPPER_RENDER_HANDLER;
-	}
-
-	@Override
-	protected void handleAdditional() {
-		CreateClient.ZAPPER_RENDER_HANDLER.addBeam(new LaserBeam(location, target));
+	public Vec3 target() {
+		return target;
 	}
 
 	@Override

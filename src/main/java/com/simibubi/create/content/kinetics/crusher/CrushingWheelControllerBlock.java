@@ -206,6 +206,13 @@ public class CrushingWheelControllerBlock extends DirectionalBlock implements IB
 	}
 
 	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+										   BlockPos pos, boolean isMoving) {
+		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
+	}
+
+	@Override
 	public Class<CrushingWheelControllerBlockEntity> getBlockEntityClass() {
 		return CrushingWheelControllerBlockEntity.class;
 	}

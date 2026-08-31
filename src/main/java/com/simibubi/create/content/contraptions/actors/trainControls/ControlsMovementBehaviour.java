@@ -1,23 +1,10 @@
 package com.simibubi.create.content.contraptions.actors.trainControls;
 
-import java.util.Collection;
-
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
-import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.content.contraptions.behaviour.MovementContext;
-import com.simibubi.create.content.contraptions.render.ContraptionMatrices;
-import com.simibubi.create.content.trains.entity.CarriageContraptionEntity;
-import com.simibubi.create.foundation.virtualWorld.VirtualRenderWorld;
 
-import net.createmod.catnip.api.client.animation.AnimationTickHolder;
 import net.createmod.catnip.api.animation.LerpedFloat;
-import net.createmod.catnip.api.animation.LerpedFloat.Chaser;
-import net.createmod.catnip.impl.client.render.MultiBufferSource;
-import net.minecraft.client.renderer.SubmitNodeCollector;
-import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate.StructureBlockInfo;
 
 
 public class ControlsMovementBehaviour implements MovementBehaviour {
@@ -51,79 +38,6 @@ public class ControlsMovementBehaviour implements MovementBehaviour {
 		angles.steering.tickChaser();
 		angles.speed.tickChaser();
 		angles.equipAnimation.tickChaser();
-	}
-
-	@Override
-	public void renderInContraption(MovementContext context, VirtualRenderWorld renderWorld,
-		ContraptionMatrices matrices, MultiBufferSource buffer) {
-		if (!(context.temporaryData instanceof LeverAngles angles))
-			return;
-
-		AbstractContraptionEntity entity = context.contraption.entity;
-		if (!(entity instanceof CarriageContraptionEntity cce))
-			return;
-
-		StructureBlockInfo info = context.contraption.getBlocks()
-			.get(context.localPos);
-		Direction initialOrientation = cce.getInitialOrientation()
-			.getCounterClockWise();
-		boolean inverted = false;
-		if (info != null && info.state().hasProperty(ControlsBlock.FACING))
-			inverted = !info.state().getValue(ControlsBlock.FACING)
-				.equals(initialOrientation);
-
-		if (ControlsHandler.getContraption() == entity && ControlsHandler.getControlsPos() != null
-			&& ControlsHandler.getControlsPos().equals(context.localPos)) {
-			Collection<Integer> pressed = ControlsHandler.currentlyPressed;
-			angles.equipAnimation.chase(1, .2f, Chaser.EXP);
-			angles.steering.chase((pressed.contains(3) ? 1 : 0) + (pressed.contains(2) ? -1 : 0), 0.2f, Chaser.EXP);
-			float f = cce.movingBackwards ^ inverted ? -1 : 1;
-			angles.speed.chase(Math.min(context.motion.length(), 0.5f) * f, 0.2f, Chaser.EXP);
-
-		} else {
-			angles.equipAnimation.chase(0, .2f, Chaser.EXP);
-			angles.steering.chase(0, 0, Chaser.EXP);
-			angles.speed.chase(0, 0, Chaser.EXP);
-		}
-
-		float pt = AnimationTickHolder.getPartialTicks();
-		ControlsRenderer.render(context, renderWorld, matrices, buffer, angles.equipAnimation.getValue(pt),
-			angles.speed.getValue(pt), angles.steering.getValue(pt));
-	}
-
-	public void submitInContraption(MovementContext context, PoseStack ms, SubmitNodeCollector collector, int light) {
-		if (!(context.temporaryData instanceof LeverAngles angles))
-			return;
-
-		AbstractContraptionEntity entity = context.contraption.entity;
-		if (!(entity instanceof CarriageContraptionEntity cce))
-			return;
-
-		StructureBlockInfo info = context.contraption.getBlocks()
-			.get(context.localPos);
-		Direction initialOrientation = cce.getInitialOrientation()
-			.getCounterClockWise();
-		boolean inverted = false;
-		if (info != null && info.state().hasProperty(ControlsBlock.FACING))
-			inverted = !info.state().getValue(ControlsBlock.FACING)
-				.equals(initialOrientation);
-
-		if (ControlsHandler.getContraption() == entity && ControlsHandler.getControlsPos() != null
-			&& ControlsHandler.getControlsPos().equals(context.localPos)) {
-			Collection<Integer> pressed = ControlsHandler.currentlyPressed;
-			angles.equipAnimation.chase(1, .2f, Chaser.EXP);
-			angles.steering.chase((pressed.contains(3) ? 1 : 0) + (pressed.contains(2) ? -1 : 0), 0.2f, Chaser.EXP);
-			float f = cce.movingBackwards ^ inverted ? -1 : 1;
-			angles.speed.chase(Math.min(context.motion.length(), 0.5f) * f, 0.2f, Chaser.EXP);
-		} else {
-			angles.equipAnimation.chase(0, .2f, Chaser.EXP);
-			angles.steering.chase(0, 0, Chaser.EXP);
-			angles.speed.chase(0, 0, Chaser.EXP);
-		}
-
-		float pt = AnimationTickHolder.getPartialTicks();
-		ControlsRenderer.submitInContraption(context, ms, collector, light, angles.equipAnimation.getValue(pt),
-			angles.speed.getValue(pt), angles.steering.getValue(pt));
 	}
 
 }

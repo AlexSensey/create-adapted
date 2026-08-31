@@ -66,7 +66,8 @@ public abstract class DrawManager<N extends AbstractInstancer<?>> {
 	public void render(LightStorage lightStorage, EnvironmentStorage environmentStorage) {
 		// Thread safety: flush is called from the render thread after all visual updates have been made,
 		// so there are no:tm: threads we could be racing with.
-		for (var init : initializationQueue) {
+		UninitializedInstancer<N, ?> init;
+		while ((init = initializationQueue.poll()) != null) {
 			var instancer = init.instancer();
 			if (instancer.instanceCount() > 0) {
 				initialize(init.key(), instancer);
@@ -74,7 +75,6 @@ public abstract class DrawManager<N extends AbstractInstancer<?>> {
 				instancers.remove(init.key());
 			}
 		}
-		initializationQueue.clear();
 	}
 
 	public void onRenderOriginChanged() {

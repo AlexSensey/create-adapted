@@ -115,6 +115,7 @@ repositories {
     maven { url = "https://maven.squiddev.cc" } // CC: Tweaked
     maven { url = "https://www.cursemaven.com" }
     maven { url = "https://api.modrinth.com/maven" }
+    maven { url = "https://maven.caffeinemc.net/releases" }
     maven { url = "https://maven.ftb.dev/releases" } // FTB Mods
     maven { url = "https://maven.architectury.dev" } // Arch API
     // NeoForge config api port, needed by ponder
@@ -170,7 +171,7 @@ dependencies {
 
     compileOnly("top.theillusivec4.curios:curios-neoforge:$curios_version:api")
 
-    compileOnly("maven.modrinth:sodium:mc$minecraft_dependency_version-$sodium_version-neoforge")
+    compileOnly("net.caffeinemc:sodium-neoforge-api:${sodium_version}+mc${minecraft_dependency_version}")
 
     if (cc_tweaked_enable.toBoolean()) {
         compileOnly("cc.tweaked:cc-tweaked-$minecraft_dependency_version-core-api:$cc_tweaked_version")
@@ -1324,6 +1325,40 @@ tasks.withType(Jar).configureEach {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
+}
+
+// Minecraft 26.2 resolves BlockItem names through item.<namespace>.<path>.
+// Upstream Create translations mostly contain the corresponding block.* keys,
+// so mirror them in every packaged language just like ExternalCreateAssets does
+// for the public external-assets edition.
+def createProcessedLanguageDirectory = layout.buildDirectory.dir("resources/main/assets/create/lang")
+tasks.named("processResources").configure {
+    doLast {
+        File langDirectory = createProcessedLanguageDirectory.get().asFile
+        if (!langDirectory.isDirectory())
+            return
+
+        langDirectory.eachFile(groovy.io.FileType.FILES) { File languageFile ->
+            if (!languageFile.name.endsWith(".json"))
+                return
+
+            Map<String, Object> translations = (Map<String, Object>) new groovy.json.JsonSlurper().parse(languageFile, "UTF-8")
+            Map<String, Object> aliases = new LinkedHashMap<>()
+
+            translations.each { String key, Object value ->
+                if (key.startsWith("block.create.")) {
+                    String itemKey = "item.create." + key.substring("block.create.".length())
+                    if (!translations.containsKey(itemKey))
+                        aliases.put(itemKey, value)
+                }
+            }
+
+            if (!aliases.isEmpty()) {
+                translations.putAll(aliases)
+                languageFile.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(translations)) + System.lineSeparator(), "UTF-8")
+            }
+        }
+    }
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

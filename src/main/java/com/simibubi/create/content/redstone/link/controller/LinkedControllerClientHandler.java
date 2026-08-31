@@ -34,6 +34,16 @@ import net.neoforged.neoforge.client.gui.GuiLayer;
 
 public class LinkedControllerClientHandler {
 
+	public static void toggleInLectern(java.util.UUID previousUser, java.util.UUID user, net.minecraft.core.BlockPos pos) {
+		LocalPlayer player = Minecraft.getInstance().player;
+		if (player == null)
+			return;
+		if (user == null && player.getUUID().equals(previousUser))
+			deactivateInLectern();
+		else if (previousUser == null && player.getUUID().equals(user))
+			activateInLectern(pos);
+	}
+
 	public static final GuiLayer OVERLAY = LinkedControllerClientHandler::renderOverlay;
 
 	public static Mode MODE = Mode.IDLE;

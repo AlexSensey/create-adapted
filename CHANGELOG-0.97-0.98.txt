@@ -1,0 +1,5 @@
+Changes since 0.97
+
+- Restored the Potato Cannon's original first-person recoil direction.
+- Prevented vanilla re-equip rendering from intermittently pulling the Potato Cannon downward after firing.
+- Rendered the first-person Potato Cannon and player hand in one pass so competing animation paths cannot alternate between frames.

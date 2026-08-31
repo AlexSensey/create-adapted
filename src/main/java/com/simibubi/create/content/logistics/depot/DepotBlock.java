@@ -110,6 +110,13 @@ public class DepotBlock extends Block implements IBE<DepotBlockEntity>, IWrencha
 		IBE.onRemove(state, worldIn, pos, newState);
 	}
 
+	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+										   BlockPos pos, boolean isMoving) {
+		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
+	}
+
 	public void updateEntityAfterFallOn(BlockGetter worldIn, Entity entityIn) {
 		SharedDepotBlockMethods.onLanded(worldIn, entityIn);
 	}

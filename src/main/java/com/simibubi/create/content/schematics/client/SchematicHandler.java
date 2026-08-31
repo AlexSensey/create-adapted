@@ -136,8 +136,10 @@ public class SchematicHandler implements GuiLayer {
 		loadSettings(stack);
 		displayedSchematic = stack.get(AllDataComponents.SCHEMATIC_FILE);
 		active = true;
+		// The deploy tool renders a placement preview before the schematic is deployed.
+		// Load the selected schematic immediately so it cannot reuse the previous preview.
+		setupRenderer();
 		if (deployed) {
-			setupRenderer();
 			ToolType previousTool = currentTool;
 			selectionScreen = new ToolSelectionScreen(ToolType.getTools(player.isCreative()), this::equip);
 			selectionScreen.setSelectedElement(previousTool);
@@ -149,6 +151,7 @@ public class SchematicHandler implements GuiLayer {
 	}
 
 	private void setupRenderer() {
+		clearRenderers();
 		Level clientLevel = Minecraft.getInstance().level;
 		if (clientLevel == null || activeSchematicItem.isEmpty())
 			return;
@@ -194,6 +197,11 @@ public class SchematicHandler implements GuiLayer {
 		renderers[0] = new SchematicRenderer(normal);
 		renderers[1] = new SchematicRenderer(frontBack);
 		renderers[2] = new SchematicRenderer(leftRight);
+	}
+
+	private void clearRenderers() {
+		for (int i = 0; i < renderers.length; i++)
+			renderers[i] = null;
 	}
 
 	private static void transformBlockEntities(SchematicLevel level, StructurePlaceSettings settings) {
@@ -389,7 +397,8 @@ public class SchematicHandler implements GuiLayer {
 				this::equip);
 		}
 		deployed = true;
-		setupRenderer();
+		if (renderers[0] == null)
+			setupRenderer();
 	}
 
 	public String getCurrentSchematicName() {

@@ -64,4 +64,11 @@ public class SpoutBlock extends Block implements IWrenchable, IBE<SpoutBlockEnti
 	public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
 		IBE.onRemove(state, level, pos, newState);
 	}
+
+	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+										   BlockPos pos, boolean isMoving) {
+		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
+	}
 }

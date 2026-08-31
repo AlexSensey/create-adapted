@@ -12,6 +12,7 @@ import com.simibubi.create.compat.jei.category.animations.BlazeBurnerGuiRenderer
 import com.simibubi.create.compat.sodium.SodiumCompat;
 import com.simibubi.create.content.contraptions.glue.SuperGlueSelectionHandler;
 import com.simibubi.create.content.decoration.encasing.CasingConnectivity;
+import com.simibubi.create.content.decoration.copycat.CopycatBlockClientExtensions;
 import com.simibubi.create.content.equipment.bell.SoulPulseEffectHandler;
 import com.simibubi.create.content.equipment.potatoCannon.PotatoCannonRenderHandler;
 import com.simibubi.create.content.equipment.potatoCannon.PotatoCannonItemRenderer;
@@ -36,8 +37,8 @@ import com.simibubi.create.foundation.model.CreateStandaloneModels;
 import com.simibubi.create.foundation.particle.AirParticle;
 import com.simibubi.create.foundation.ponder.CreatePonderPlugin;
 import com.simibubi.create.foundation.render.AllInstanceTypes;
-import com.simibubi.create.infrastructure.config.AllConfigs;
 import com.simibubi.create.infrastructure.assets.ExternalCreateAssets;
+import com.simibubi.create.infrastructure.config.AllConfigs;
 import com.simibubi.create.infrastructure.gui.OpenCreateMenuButton;
 
 import dev.engine_room.flywheel.lib.model.baked.PartialModelEventHandler;
@@ -111,14 +112,17 @@ public class CreateClient {
 	}
 
 	public static void onCtorClient(IEventBus modEventBus) {
-		ExternalCreateAssets.initialize();
-		modEventBus.addListener(ExternalCreateAssets::addPackFinders);
+		if (ExternalCreateAssets.isExternalEdition()) {
+			ExternalCreateAssets.initialize();
+			modEventBus.addListener(ExternalCreateAssets::addPackFinders);
+		}
 		ModClientHooksHelper.INSTANCE.registerPictureInPictureRenderer(BlazeBurnerGuiRenderState.class,
 			BlazeBurnerGuiRenderer::new);
 		IEventBus neoEventBus = NeoForge.EVENT_BUS;
 
 		modEventBus.addListener(CreateClient::clientInit);
 		modEventBus.addListener(CreateClient::registerFluidClientExtensions);
+		modEventBus.addListener(CreateClient::registerBlockClientExtensions);
 		modEventBus.addListener(CreateClient::registerFluidModels);
 		modEventBus.addListener(CreateClient::registerParticleFactories);
 		modEventBus.addListener(CreateClient::registerItemDecorations);
@@ -169,6 +173,12 @@ public class CreateClient {
 		net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent event) {
 		registerFluidClientExtension(event, AllFluids.HONEY.get().getFluidType());
 		registerFluidClientExtension(event, AllFluids.CHOCOLATE.get().getFluidType());
+	}
+
+	private static void registerBlockClientExtensions(
+		net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent event) {
+		CopycatBlockClientExtensions copycatExtensions = new CopycatBlockClientExtensions();
+		event.registerBlock(copycatExtensions, AllBlocks.COPYCAT_PANEL.get(), AllBlocks.COPYCAT_STEP.get());
 	}
 
 	private static void registerFluidClientExtension(

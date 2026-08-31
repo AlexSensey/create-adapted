@@ -456,7 +456,7 @@ public class TrackBlock extends Block
 				continue;
 			if (level.getBlockEntity(entry.getKey()) instanceof StationBlockEntity station)
 				if (station.trackClicked(player, hand, this, state, pos))
-					return InteractionResult.SUCCESS;
+					return InteractionResult.SUCCESS_SERVER;
 		}
 
 		return InteractionResult.PASS;

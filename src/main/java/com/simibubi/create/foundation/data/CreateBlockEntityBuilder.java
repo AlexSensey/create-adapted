@@ -12,6 +12,7 @@ import org.jetbrains.annotations.NotNull;
 import com.simibubi.create.api.behaviour.display.DisplaySource;
 import com.simibubi.create.api.behaviour.display.DisplayTarget;
 import com.simibubi.create.api.registry.CreateRegistries;
+import com.simibubi.create.infrastructure.assets.ExternalCreateAssets;
 import com.tterrag.registrate.AbstractRegistrate;
 import com.tterrag.registrate.builders.BlockEntityBuilder;
 import com.tterrag.registrate.builders.BuilderCallback;
@@ -109,7 +110,8 @@ public class CreateBlockEntityBuilder<T extends BlockEntity, P> extends BlockEnt
 				Predicate<@NotNull T> renderNormally = this.renderNormally;
 				SimpleBlockEntityVisualizer.builder(getEntry())
 					.factory(visualFactory.get())
-					.skipVanillaRender(be -> !renderNormally.test(be))
+					.skipVanillaRender(be -> ExternalCreateAssets.shouldUseFlywheelVisuals()
+						&& !renderNormally.test(be))
 					.apply();
 			}
 		});

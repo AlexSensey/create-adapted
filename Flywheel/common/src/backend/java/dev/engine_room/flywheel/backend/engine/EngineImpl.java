@@ -2,6 +2,11 @@ package dev.engine_room.flywheel.backend.engine;
 
 import java.util.List;
 
+import org.lwjgl.opengl.GL32;
+
+import com.mojang.blaze3d.opengl.GlTexture;
+import com.mojang.blaze3d.pipeline.RenderTarget;
+
 import dev.engine_room.flywheel.api.backend.Engine;
 import dev.engine_room.flywheel.api.backend.RenderContext;
 import dev.engine_room.flywheel.api.instance.Instance;
@@ -19,6 +24,7 @@ import dev.engine_room.flywheel.backend.engine.embed.EnvironmentStorage;
 import dev.engine_room.flywheel.backend.engine.uniform.Uniforms;
 import dev.engine_room.flywheel.backend.gl.GlStateTracker;
 import it.unimi.dsi.fastutil.longs.LongSet;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.core.Vec3i;
@@ -31,6 +37,7 @@ public class EngineImpl implements Engine {
 	private final int sqrMaxOriginDistance;
 	private final EnvironmentStorage environmentStorage;
 	private final LightStorage lightStorage;
+	private int worldTargetFbo = -1;
 
 	private BlockPos renderOrigin = BlockPos.ZERO;
 
@@ -86,6 +93,7 @@ public class EngineImpl implements Engine {
 	@Override
 	public void render(RenderContext context) {
 		try (var state = GlStateTracker.getRestoreState()) {
+			bindWorldTarget();
 			Uniforms.update(context);
 			environmentStorage.flush();
 			drawManager.render(lightStorage, environmentStorage);
@@ -110,6 +118,35 @@ public class EngineImpl implements Engine {
 		drawManager.delete();
 		lightStorage.delete();
 		environmentStorage.delete();
+		if (worldTargetFbo != -1) {
+			GL32.glDeleteFramebuffers(worldTargetFbo);
+			worldTargetFbo = -1;
+		}
+	}
+
+	/**
+	 * NeoForge 26.2 fires level-stage events after the preceding GPU render pass
+	 * has been closed.  The OpenGL backend therefore has framebuffer 0 bound at
+	 * this point, while the level is rendered into Minecraft's main target.
+	 * Attach and bind that target explicitly for Flywheel's legacy raw-GL draws.
+	 */
+	private void bindWorldTarget() {
+		RenderTarget target = Minecraft.getInstance().gameRenderer.mainRenderTarget();
+		if (worldTargetFbo == -1) {
+			worldTargetFbo = GL32.glGenFramebuffers();
+		}
+
+		GL32.glBindFramebuffer(GL32.GL_FRAMEBUFFER, worldTargetFbo);
+		int color = ((GlTexture) target.getColorTexture()).glId();
+		GL32.glFramebufferTexture(GL32.GL_FRAMEBUFFER, GL32.GL_COLOR_ATTACHMENT0, color, 0);
+		if (target.getDepthTexture() != null) {
+			int depth = ((GlTexture) target.getDepthTexture()).glId();
+			GL32.glFramebufferTexture(GL32.GL_FRAMEBUFFER, GL32.GL_DEPTH_ATTACHMENT, depth, 0);
+		} else {
+			GL32.glFramebufferTexture(GL32.GL_FRAMEBUFFER, GL32.GL_DEPTH_ATTACHMENT, 0, 0);
+		}
+		GL32.glDrawBuffer(GL32.GL_COLOR_ATTACHMENT0);
+		GL32.glViewport(0, 0, target.width, target.height);
 	}
 
 	private void triggerFallback() {

@@ -3,13 +3,8 @@ package com.simibubi.create.content.contraptions.actors.seat;
 import com.simibubi.create.AllEntityTypes;
 import com.simibubi.create.content.logistics.box.PackageEntity;
 
-import net.minecraft.client.renderer.culling.Frustum;
-import net.minecraft.client.renderer.entity.EntityRenderer;
-import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -138,28 +133,6 @@ public class SeatEntity extends Entity implements IEntityWithComplexSpawn {
 	@Override
 	public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
 		return false;
-	}
-
-	public static class Render extends EntityRenderer<SeatEntity, EntityRenderState> {
-
-		public Render(EntityRendererProvider.Context context) {
-			super(context);
-		}
-
-		@Override
-		public boolean shouldRender(SeatEntity seatEntity, Frustum frustum, double p_225626_3_, double p_225626_5_,
-			double p_225626_7_) {
-			return false;
-		}
-
-		public Identifier getTextureLocation(SeatEntity seatEntity) {
-			return null;
-		}
-
-		@Override
-		public EntityRenderState createRenderState() {
-			return new EntityRenderState();
-		}
 	}
 
 	@Override

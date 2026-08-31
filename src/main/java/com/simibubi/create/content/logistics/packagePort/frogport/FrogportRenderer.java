@@ -6,8 +6,6 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.simibubi.create.foundation.blockEntity.renderer.SmartBlockEntityRenderer;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
-
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -127,9 +125,6 @@ public class FrogportRenderer extends SmartBlockEntityRenderer<FrogportBlockEnti
 			submitNameplateOnHover(frogState.blockEntity,
 				Component.literal(frogState.blockEntity.addressFilter), 1, ms, collector,
 				cameraRenderState, state.lightCoords);
-
-		if (VisualizationManager.supportsVisualization(frogState.blockEntity.getLevel()))
-			return;
 
 		ms.pushPose();
 		rotateCenteredY(ms, frogState.yaw);

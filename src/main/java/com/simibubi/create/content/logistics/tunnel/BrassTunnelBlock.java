@@ -51,4 +51,11 @@ public class BrassTunnelBlock extends BeltTunnelBlock {
 		IBE.onRemove(state, level, pos, newState);
 	}
 
+	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+										   BlockPos pos, boolean isMoving) {
+		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
+	}
+
 }

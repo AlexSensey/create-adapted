@@ -20,7 +20,7 @@ public record ContraptionStallPacket(int entityId, double x, double y, double z,
 
 	@Override
 	public void handle(Player player) {
-		AbstractContraptionEntity.handleStallPacket(this);
+		ContraptionPacketClient.handleStall(this);
 	}
 
 	@Override

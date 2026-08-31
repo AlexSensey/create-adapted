@@ -3,10 +3,11 @@ package com.simibubi.create.content.trains.observer;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.simibubi.create.content.trains.track.TrackTargetingBehaviour;
+import com.simibubi.create.content.trains.track.TrackTargetingClient;
 import com.simibubi.create.content.trains.track.TrackTargetingBehaviour.RenderedTrackOverlayType;
 import com.simibubi.create.foundation.blockEntity.behaviour.filtering.FilteringBehaviour;
 import com.simibubi.create.foundation.blockEntity.renderer.SmartBlockEntityRenderer;
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 import com.simibubi.create.foundation.render.FlatGuiItemRenderer;
 
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
@@ -55,7 +56,7 @@ public class TrackObserverRenderer extends SmartBlockEntityRenderer<TrackObserve
 		TrackObserverBlockEntity be = observerState.blockEntity;
 		if (be == null || be.getLevel() == null)
 			return;
-		if (VisualizationManager.supportsVisualization(be.getLevel()))
+		if (CreateVisualizationManager.supportsVisualization(be.getLevel()))
 			return;
 
 		renderTrackOverlay(ms, collector, be.getLevel(), be.getBlockPos(), be.edgePoint.getGlobalPosition(),
@@ -89,7 +90,7 @@ public class TrackObserverRenderer extends SmartBlockEntityRenderer<TrackObserve
 		ms.pushPose();
 		BlockPos offset = targetPosition.subtract(blockEntityPos);
 		ms.translate(offset.getX(), offset.getY(), offset.getZ());
-		TrackTargetingBehaviour.submit(level, targetPosition, direction, bezier, ms, collector, light,
+		TrackTargetingClient.submitOverlay(level, targetPosition, direction, bezier, ms, collector, light,
 			RenderedTrackOverlayType.OBSERVER, 1);
 		ms.popPose();
 	}

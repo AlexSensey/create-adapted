@@ -7,7 +7,7 @@ import com.simibubi.create.content.kinetics.base.KineticBlockEntityRenderer;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueLabelRenderer;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -44,7 +44,7 @@ public class SpeedControllerRenderer extends KineticBlockEntityRenderer<SpeedCon
 			return;
 		if (!(kineticState.blockEntity instanceof SpeedControllerBlockEntity be))
 			return;
-		if (!VisualizationManager.supportsVisualization(be.getLevel()))
+		if (!CreateVisualizationManager.supportsVisualization(be.getLevel()))
 			submitBracket(be, state, ms, collector);
 		ScrollValueLabelRenderer.submitSpeedController(be, state, ms, collector, cameraRenderState);
 	}

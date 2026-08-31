@@ -21,7 +21,7 @@ public record ContraptionBlockChangedPacket(int entityId, BlockPos localPos, Blo
 
 	@Override
 	public void handle(Player player) {
-		AbstractContraptionEntity.handleBlockChangedPacket(this);
+		ContraptionPacketClient.handleBlockChanged(this);
 	}
 
 	@Override

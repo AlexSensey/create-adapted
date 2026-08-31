@@ -92,6 +92,12 @@ open class SubprojectExtension(val project: Project) {
                     includeGroup("maven.modrinth")
                 }
             }
+            maven("https://maven.caffeinemc.net/releases") {
+                name = "CaffeineMC"
+                content {
+                    includeGroup("net.caffeinemc")
+                }
+            }
         }
     }
 

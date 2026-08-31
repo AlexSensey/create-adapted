@@ -15,7 +15,7 @@ public record ContraptionRelocationPacket(int entityId) implements ClientboundPa
 
 	@Override
 	public void handle(Player player) {
-		OrientedContraptionEntity.handleRelocationPacket(this);
+		ContraptionPacketClient.handleRelocation(this);
 	}
 
 	@Override

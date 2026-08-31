@@ -10,6 +10,8 @@ import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import com.simibubi.create.api.equipment.goggles.IHaveHoveringInformation;
 import com.simibubi.create.api.equipment.goggles.IProxyHoveringInformation;
 import com.simibubi.create.content.contraptions.IDisplayAssemblyExceptions;
+import com.simibubi.create.content.contraptions.ContraptionHandlerClient;
+import com.simibubi.create.content.contraptions.ContraptionHandlerClient.ContraptionHit;
 import com.simibubi.create.content.contraptions.piston.MechanicalPistonBlock;
 import com.simibubi.create.content.contraptions.piston.PistonExtensionPoleBlock;
 import com.simibubi.create.content.trains.entity.TrainRelocator;
@@ -47,6 +49,18 @@ public class GoggleOverlayRenderer {
 			|| mc.player == null || mc.level == null)
 			return;
 
+		ContraptionHit contraptionHit = ContraptionHandlerClient.findContraptionHit(mc.player);
+		if (contraptionHit != null) {
+			BlockPos localPos = contraptionHit.hitResult().getBlockPos();
+			BlockEntity movingBlockEntity = contraptionHit.entity().getContraption()
+				.getOrCreateClientContraptionLazy().getBlockEntity(localPos);
+			if (movingBlockEntity != null) {
+				renderMovingBlockEntityOverlay(guiGraphics, deltaTracker, mc, movingBlockEntity, localPos,
+					contraptionHit.entity().getId());
+				return;
+			}
+		}
+
 		if (!(mc.hitResult instanceof BlockHitResult result)) {
 			resetHover();
 			return;
@@ -54,9 +68,10 @@ public class GoggleOverlayRenderer {
 
 		ClientLevel world = mc.level;
 		BlockPos targetedPos = result.getBlockPos();
-		if (!targetedPos.equals(lastHovered))
+		if (!targetedPos.equals(lastHovered) || lastHoveredContraption != Integer.MIN_VALUE)
 			hoverTicks = 0;
 		lastHovered = targetedPos;
+		lastHoveredContraption = Integer.MIN_VALUE;
 		hoverTicks++;
 
 		BlockPos pos = proxiedOverlayPosition(world, targetedPos);
@@ -105,6 +120,42 @@ public class GoggleOverlayRenderer {
 			return;
 		}
 
+		renderTooltip(guiGraphics, deltaTracker, mc, icon, tooltip);
+	}
+
+	private static int lastHoveredContraption = Integer.MIN_VALUE;
+
+	private static void renderMovingBlockEntityOverlay(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker,
+		Minecraft mc, BlockEntity be, BlockPos localPos, int contraptionId) {
+		if (!localPos.equals(lastHovered) || lastHoveredContraption != contraptionId)
+			hoverTicks = 0;
+		lastHovered = localPos;
+		lastHoveredContraption = contraptionId;
+		hoverTicks++;
+
+		boolean wearingGoggles = GogglesItem.isWearingGoggles(mc.player);
+		boolean isShifting = mc.player.isShiftKeyDown();
+		boolean hasGoggleInformation = be instanceof IHaveGoggleInformation;
+		boolean hasHoveringInformation = be instanceof IHaveHoveringInformation;
+		List<Component> tooltip = new ArrayList<>();
+		ItemStack icon = AllItems.GOGGLES.asStack();
+		if (be instanceof IHaveCustomOverlayIcon customOverlayIcon)
+			icon = customOverlayIcon.getIcon(isShifting);
+
+		boolean goggleAdded = hasGoggleInformation && wearingGoggles
+			&& ((IHaveGoggleInformation) be).addToGoggleTooltip(tooltip, isShifting);
+		boolean hoverAdded = false;
+		if (hasHoveringInformation) {
+			if (!tooltip.isEmpty())
+				tooltip.add(CommonComponents.EMPTY);
+			hoverAdded = ((IHaveHoveringInformation) be).addToTooltip(tooltip, isShifting);
+			if (goggleAdded && !hoverAdded)
+				tooltip.removeLast();
+		}
+		if ((!goggleAdded && !hoverAdded) || tooltip.isEmpty()) {
+			resetHover();
+			return;
+		}
 		renderTooltip(guiGraphics, deltaTracker, mc, icon, tooltip);
 	}
 
@@ -176,6 +227,7 @@ public class GoggleOverlayRenderer {
 
 	private static void resetHover() {
 		lastHovered = null;
+		lastHoveredContraption = Integer.MIN_VALUE;
 		hoverTicks = 0;
 	}
 

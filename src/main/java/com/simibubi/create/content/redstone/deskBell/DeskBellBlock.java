@@ -113,6 +113,13 @@ public class DeskBellBlock extends WrenchableDirectionalBlock
 	}
 
 	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+										   BlockPos pos, boolean isMoving) {
+		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
+	}
+
+	@Override
 	public int getSignal(BlockState pBlockState, BlockGetter pBlockAccess, BlockPos pPos, Direction pSide) {
 		return pBlockState.getValue(POWERED) ? 15 : 0;
 	}

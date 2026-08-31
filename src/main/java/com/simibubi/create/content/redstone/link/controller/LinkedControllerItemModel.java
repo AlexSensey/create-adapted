@@ -173,9 +173,17 @@ public class LinkedControllerItemModel implements ItemModel {
 			return transform;
 
 		int handModifier = displayContext == ItemDisplayContext.FIRST_PERSON_LEFT_HAND ? -1 : 1;
-		return transform.translate(0, equip * .45f, equip * .32f * handModifier)
-			.rotateY((float) Math.toRadians(equip * -24 * handModifier))
-			.rotateZ((float) Math.toRadians(equip * -24));
+		// The legacy custom renderer surrounded this animation with +.5/- .5
+		// translations. Preserve that centre pivot in the 26.2 item-model path;
+		// otherwise the controller rotates around a model corner and swings far
+		// forward when activated.
+		return transform.translate(.5f, .5f, .5f)
+			// Minecraft 26.2's first-person item pose already raises the model more
+			// than the legacy renderer did, so retain only a small activation lift.
+			.translate(0, equip * .08f, equip * .25f * handModifier)
+			.rotateY((float) Math.toRadians(equip * -30 * handModifier))
+			.rotateZ((float) Math.toRadians(equip * -30))
+			.translate(-.5f, -.5f, -.5f);
 	}
 
 	private record RenderState(boolean active, float equip, int bindLightIdentity) {

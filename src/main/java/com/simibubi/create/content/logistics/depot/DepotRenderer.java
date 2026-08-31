@@ -4,8 +4,10 @@ import java.util.Random;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
+import com.simibubi.create.content.kinetics.belt.BeltItemRenderHelper;
 import com.simibubi.create.content.kinetics.belt.BeltHelper;
 import com.simibubi.create.content.kinetics.belt.transport.TransportedItemStack;
+import com.simibubi.create.content.logistics.box.PackageItem;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.renderer.SafeBlockEntityRenderer;
 
@@ -21,7 +23,6 @@ import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
-import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
@@ -82,13 +83,16 @@ public class DepotRenderer extends SafeBlockEntityRenderer<DepotBlockEntity> {
 			if (stack.isEmpty())
 				continue;
 			ms.pushPose();
+			ItemStackRenderState itemState = BeltItemRenderHelper.createRenderState(stack);
 			boolean upright = BeltHelper.isItemUpright(stack);
+			boolean blockItem = BeltItemRenderHelper.isGui3d(itemState);
 			ms.mulPose(Axis.YP.rotationDegrees(360 / 8f * i));
 			ms.translate(.35f, 0, 0);
 			if (upright)
 				ms.mulPose(Axis.YP.rotationDegrees(-(360 / 8f * i)));
 			int angle = (int) (360 * new Random(i + 1).nextFloat());
-			renderItem(ms, collector, light, stack, upright ? angle + 90 : angle, upright, itemPosition);
+			renderItem(ms, collector, light, stack, itemState, upright ? angle + 90 : angle, upright, blockItem,
+				itemPosition);
 			ms.popPose();
 		}
 
@@ -114,7 +118,10 @@ public class DepotRenderer extends SafeBlockEntityRenderer<DepotBlockEntity> {
 			ms.translate(alongX ? sideOffset : 0, 0, alongX ? 0 : sideOffset);
 		}
 
-		renderItem(ms, collector, light, transported.stack, transported.angle, BeltHelper.isItemUpright(transported.stack),
+		ItemStackRenderState itemState = BeltItemRenderHelper.createRenderState(transported.stack);
+		boolean upright = BeltHelper.isItemUpright(transported.stack);
+		boolean blockItem = BeltItemRenderHelper.isGui3d(itemState);
+		renderItem(ms, collector, light, transported.stack, itemState, transported.angle, upright, blockItem,
 			itemPosition);
 		ms.popPose();
 	}
@@ -123,7 +130,7 @@ public class DepotRenderer extends SafeBlockEntityRenderer<DepotBlockEntity> {
 		ItemStack itemStack, int angle, Random r, Vec3 itemPosition, boolean alwaysUpright) {}
 
 	private static void renderItem(PoseStack ms, SubmitNodeCollector collector, int light, ItemStack itemStack,
-		int angle, boolean renderUpright, Vec3 itemPosition) {
+		ItemStackRenderState itemState, int angle, boolean renderUpright, boolean blockItem, Vec3 itemPosition) {
 		if (itemStack.isEmpty())
 			return;
 
@@ -132,6 +139,7 @@ public class DepotRenderer extends SafeBlockEntityRenderer<DepotBlockEntity> {
 
 		ms.pushPose();
 		ms.mulPose(Axis.YP.rotationDegrees(angle));
+		boolean box = PackageItem.isPackage(itemStack);
 		if (renderUpright) {
 			Vec3 cameraPosition = Minecraft.getInstance().gameRenderer.mainCamera()
 				.position();
@@ -143,24 +151,27 @@ public class DepotRenderer extends SafeBlockEntityRenderer<DepotBlockEntity> {
 
 		for (int i = 0; i <= count; i++) {
 			ms.pushPose();
-			if (i > 0)
+			if (blockItem && !box)
 				ms.translate(random.nextFloat() * .0625f * i, 0, random.nextFloat() * .0625f * i);
-			ms.scale(.5f, .5f, .5f);
-			if (!renderUpright) {
+			if (box) {
+				ms.translate(0, 4 / 16f, 0);
+				ms.scale(1.5f, 1.5f, 1.5f);
+			} else {
+				ms.scale(.5f, .5f, .5f);
+			}
+			if (!blockItem && !renderUpright) {
 				ms.translate(0, -3 / 16f, 0);
 				ms.mulPose(Axis.XP.rotationDegrees(90));
 			}
 
-			ItemStackRenderState itemState = new ItemStackRenderState();
-			Minecraft.getInstance()
-				.getItemModelResolver()
-				.updateForTopItem(itemState, itemStack, ItemDisplayContext.FIXED, null, null, 0);
 			itemState.submit(ms, collector, light, OverlayTexture.NO_OVERLAY, 0);
 			ms.popPose();
 
-			if (!renderUpright)
-				ms.translate(0, 1 / 16d, 0);
-			else
+			if (!renderUpright) {
+				if (!blockItem)
+					ms.mulPose(Axis.YP.rotationDegrees(10));
+				ms.translate(0, blockItem ? 1 / 64d : 1 / 16d, 0);
+			} else
 				ms.translate(0, 0, -1 / 16f);
 		}
 

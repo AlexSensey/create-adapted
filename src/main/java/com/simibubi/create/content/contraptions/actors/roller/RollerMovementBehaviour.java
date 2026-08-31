@@ -34,6 +34,7 @@ import com.simibubi.create.foundation.virtualWorld.VirtualRenderWorld;
 import com.simibubi.create.infrastructure.config.AllConfigs;
 
 import dev.engine_room.flywheel.api.visualization.VisualizationContext;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 import net.createmod.catnip.api.data.Couple;
 import net.createmod.catnip.api.data.Iterate;
 import net.createmod.catnip.api.data.Pair;
@@ -85,7 +86,8 @@ public class RollerMovementBehaviour extends BlockBreakingMovementBehaviour {
 	@Override
 	public void renderInContraption(MovementContext context, VirtualRenderWorld renderWorld,
 		ContraptionMatrices matrices, MultiBufferSource buffers) {
-		RollerRenderer.renderInContraption(context, renderWorld, matrices, buffers);
+		if (!CreateVisualizationManager.supportsVisualization(context.world))
+			RollerRenderer.renderInContraption(context, renderWorld, matrices, buffers);
 	}
 
 	@Override

@@ -6,7 +6,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntityRenderer;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.createmod.catnip.api.math.AngleHelper;
 import net.minecraft.client.Minecraft;
@@ -40,7 +40,7 @@ public class FluidValveRenderer extends KineticBlockEntityRenderer<FluidValveBlo
 			return;
 		if (isInvalid(be))
 			return;
-		if (VisualizationManager.supportsVisualization(be.getLevel()))
+		if (CreateVisualizationManager.supportsVisualization(be.getLevel()))
 			return;
 
 		List<BlockStateModelPart> pointer = getPointerModel();

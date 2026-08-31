@@ -12,7 +12,7 @@ import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
-import net.minecraft.client.renderer.block.BlockAndTintGetter;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -41,7 +41,7 @@ public class StraightPipeBlockEntity extends SmartBlockEntity {
 		}
 
 		@Override
-		public AttachmentTypes getRenderedRimAttachment(BlockAndTintGetter world, BlockPos pos, BlockState state,
+		public AttachmentTypes getRenderedRimAttachment(BlockGetter world, BlockPos pos, BlockState state,
 			Direction direction) {
 			AttachmentTypes attachment = super.getRenderedRimAttachment(world, pos, state, direction);
 			BlockState otherState = world.getBlockState(pos.relative(direction));

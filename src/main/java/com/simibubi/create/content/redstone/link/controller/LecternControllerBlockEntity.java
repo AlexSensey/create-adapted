@@ -11,7 +11,6 @@ import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour
 
 import net.createmod.catnip.api.data.codec.CatnipCodecUtils;
 import net.createmod.catnip.platform.CatnipServices;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -144,11 +143,7 @@ public class LecternControllerBlockEntity extends SmartBlockEntity {
 	}
 
 	private void tryToggleActive() {
-		if (user == null && Minecraft.getInstance().player.getUUID().equals(prevUser)) {
-			LinkedControllerClientHandler.deactivateInLectern();
-		} else if (prevUser == null && Minecraft.getInstance().player.getUUID().equals(user)) {
-			LinkedControllerClientHandler.activateInLectern(worldPosition);
-		}
+		LinkedControllerClientHandler.toggleInLectern(prevUser, user, worldPosition);
 	}
 
 	public void setController(ItemStack newController) {

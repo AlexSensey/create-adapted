@@ -13,6 +13,7 @@ import com.simibubi.create.foundation.utility.AbstractBlockBreakQueue;
 import com.simibubi.create.foundation.virtualWorld.VirtualRenderWorld;
 
 import dev.engine_room.flywheel.api.visualization.VisualizationContext;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 import net.createmod.catnip.api.math.VecHelper;
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
 import net.minecraft.core.BlockPos;
@@ -105,7 +106,8 @@ public class SawMovementBehaviour extends BlockBreakingMovementBehaviour {
 	@Override
 	public void renderInContraption(MovementContext context, VirtualRenderWorld renderWorld,
 		ContraptionMatrices matrices, MultiBufferSource buffer) {
-		SawRenderer.renderInContraption(context, renderWorld, matrices, buffer);
+		if (!CreateVisualizationManager.supportsVisualization(context.world))
+			SawRenderer.renderInContraption(context, renderWorld, matrices, buffer);
 	}
 
 	@Override

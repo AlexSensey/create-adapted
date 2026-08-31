@@ -31,7 +31,6 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
-import net.minecraft.core.Direction.AxisDirection;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -116,8 +115,6 @@ public class StationRenderer extends SafeBlockEntityRenderer<StationBlockEntity>
 		BlockPos offset = targetPosition.subtract(be.getBlockPos());
 		ms.translate(offset.getX(), offset.getY(), offset.getZ());
 		track.prepareAssemblyOverlay(be.getLevel(), targetPosition, trackState, direction, ms);
-		rotateOrthogonalXOverlay(ms, direction.getAxis() == Direction.Axis.X);
-		rotateOppositeSideOverlay(ms, direction.getAxisDirection() == AxisDirection.NEGATIVE);
 
 		ms.translate(0, 0, 1);
 
@@ -149,25 +146,9 @@ public class StationRenderer extends SafeBlockEntityRenderer<StationBlockEntity>
 		ms.pushPose();
 		BlockPos offset = targetPosition.subtract(be.getBlockPos());
 		ms.translate(offset.getX(), offset.getY(), offset.getZ());
-		TrackTargetingBehaviour.submit(be.getLevel(), targetPosition, be.edgePoint.getTargetDirection(),
+		TrackTargetingClient.submitOverlay(be.getLevel(), targetPosition, be.edgePoint.getTargetDirection(),
 			be.edgePoint.getTargetBezier(), ms, collector, light, RenderedTrackOverlayType.STATION, 1);
 		ms.popPose();
-	}
-
-	private static void rotateOrthogonalXOverlay(PoseStack ms, boolean rotate) {
-		if (!rotate)
-			return;
-		ms.translate(.5, .5, .5);
-		ms.mulPose(Axis.YP.rotation(Mth.HALF_PI));
-		ms.translate(-.5, -.5, -.5);
-	}
-
-	private static void rotateOppositeSideOverlay(PoseStack ms, boolean rotate) {
-		if (!rotate)
-			return;
-		ms.translate(.5, .5, .5);
-		ms.mulPose(Axis.YP.rotation(Mth.PI));
-		ms.translate(-.5, -.5, -.5);
 	}
 
 	private static void renderAssemblyMarker(PoseStack ms, SubmitNodeCollector collector, BlockStateModelPart part,
@@ -296,7 +277,8 @@ public class StationRenderer extends SafeBlockEntityRenderer<StationBlockEntity>
 		boolean flipped) {
 	}
 
-	public boolean shouldRenderOffScreen(StationBlockEntity be) {
+	@Override
+	public boolean shouldRenderOffScreen() {
 		return true;
 	}
 

@@ -7,7 +7,7 @@ import com.mojang.math.Axis;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntityRenderer;
 import com.simibubi.create.infrastructure.config.AllConfigs;
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -36,7 +36,8 @@ public abstract class AbstractPulleyRenderer<T extends KineticBlockEntity> exten
 		this.halfMagnet = halfMagnet;
 	}
 
-	public boolean shouldRenderOffScreen(T be) {
+	@Override
+	public boolean shouldRenderOffScreen() {
 		return true;
 	}
 
@@ -64,7 +65,7 @@ public abstract class AbstractPulleyRenderer<T extends KineticBlockEntity> exten
 			return;
 		if (!(pulleyState.blockEntity instanceof KineticBlockEntity be))
 			return;
-		if (VisualizationManager.supportsVisualization(be.getLevel()))
+		if (CreateVisualizationManager.supportsVisualization(be.getLevel()))
 			return;
 
 		@SuppressWarnings("unchecked")

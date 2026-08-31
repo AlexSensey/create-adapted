@@ -43,7 +43,7 @@ public final class FlwCommands {
 						backendValue.set(FlwConfig.DEFAULT_BACKEND_STR);
 
 						// Reload renderers so we can report the actual backend.
-						Minecraft.getInstance().levelRenderer.resetLevelRenderData();
+						reloadLevelRenderer();
 
 						Backend actualBackend = BackendManager.currentBackend();
 						String actualIdStr = Backend.REGISTRY.getIdOrThrow(actualBackend)
@@ -59,7 +59,7 @@ public final class FlwCommands {
 						backendValue.set(requestedIdStr);
 
 						// Reload renderers so we can report the actual backend.
-						Minecraft.getInstance().levelRenderer.resetLevelRenderData();
+						reloadLevelRenderer();
 
 						Backend actualBackend = BackendManager.currentBackend();
 						if (actualBackend != requestedBackend) {
@@ -86,14 +86,14 @@ public final class FlwCommands {
 						.executes(context -> {
 							limitUpdatesValue.set(true);
 							sendMessage(context.getSource(), Component.translatable("command.flywheel.limit_updates.set.on"));
-							Minecraft.getInstance().levelRenderer.resetLevelRenderData();
+							reloadLevelRenderer();
 							return Command.SINGLE_SUCCESS;
 						}))
 				.then(Commands.literal("off")
 						.executes(context -> {
 							limitUpdatesValue.set(false);
 							sendMessage(context.getSource(), Component.translatable("command.flywheel.limit_updates.set.off"));
-							Minecraft.getInstance().levelRenderer.resetLevelRenderData();
+							reloadLevelRenderer();
 							return Command.SINGLE_SUCCESS;
 						})));
 
@@ -114,6 +114,21 @@ public final class FlwCommands {
 		command.then(createDebugCommand());
 
 		event.getDispatcher().register(command);
+	}
+
+	/**
+	 * Minecraft 26.2 split the old renderer reload into teardown and reconstruction methods.
+	 * Calling resetLevelRenderData() by itself leaves viewArea null and crashes on the next frame.
+	 */
+	private static void reloadLevelRenderer() {
+		Minecraft minecraft = Minecraft.getInstance();
+		if (minecraft.level == null) {
+			return;
+		}
+
+		minecraft.levelRenderer.invalidateCompiledGeometry(minecraft.level, minecraft.options,
+			minecraft.gameRenderer.mainCamera(), minecraft.getBlockColors());
+		FlwImplXplat.INSTANCE.dispatchReloadLevelRendererEvent(minecraft.level);
 	}
 
 	private static LiteralArgumentBuilder<CommandSourceStack> createDebugCommand() {

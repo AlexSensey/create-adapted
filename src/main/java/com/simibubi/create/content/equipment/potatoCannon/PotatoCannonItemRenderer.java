@@ -11,6 +11,7 @@ import com.simibubi.create.CreateClient;
 import com.simibubi.create.AllItems;
 import com.simibubi.create.content.equipment.potatoCannon.PotatoCannonItem.Ammo;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import it.unimi.dsi.fastutil.ints.IntList;
 import net.createmod.catnip.api.client.animation.AnimationTickHolder;
 import net.minecraft.client.Minecraft;
@@ -64,24 +65,25 @@ public class PotatoCannonItemRenderer implements ItemModel {
 		}
 		angle %= 360;
 		Matrix4f rootTransform = new Matrix4f();
-		if (displayContext == ItemDisplayContext.FIRST_PERSON_LEFT_HAND
-			|| displayContext == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND) {
-			// 26.2 applies this transform in model space, unlike the old outer PoseStack.
-			// Move the intact model up and away instead of scaling it around the lower corner.
-			rootTransform.translate(0, 0, recoil * .07f)
+		if ((displayContext == ItemDisplayContext.FIRST_PERSON_LEFT_HAND
+			|| displayContext == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND)
+			&& !CreateClient.POTATO_CANNON_RENDER_HANDLER.isRenderingTool()) {
+			// Match the original outer PoseStack recoil: move back toward the camera,
+			// then kick the barrel up before applying the model's hand transform.
+			rootTransform.translate(0, 0, recoil)
 				.rotateX((float) Math.toRadians(recoil * 80));
 		}
 
 		ItemTransform[] sharedItemTransform = new ItemTransform[1];
-		baseModel.update(new TransformedState(state, rootTransform, sharedItemTransform, false), stack, resolver,
-			displayContext, level, owner, seed);
+		baseModel.update(new TransformedState(state, rootTransform, new Matrix4f(), sharedItemTransform, false,
+			displayContext.leftHand()), stack, resolver, displayContext, level, owner, seed);
 		if (cogModel == null)
 			return;
 
 		state.setAnimated();
 		state.appendModelIdentityElement((int) angle);
-		cogModel.update(new TransformedState(state, new Matrix4f(rootTransform).mul(cogTransform(angle)),
-			sharedItemTransform, true), stack, resolver, displayContext, level, owner, seed);
+		cogModel.update(new TransformedState(state, rootTransform, cogTransform(angle), sharedItemTransform, true,
+			displayContext.leftHand()), stack, resolver, displayContext, level, owner, seed);
 	}
 
 	private static boolean renderAmmo(GuiGraphicsExtractor graphics, net.minecraft.client.gui.Font font,
@@ -112,22 +114,26 @@ public class PotatoCannonItemRenderer implements ItemModel {
 
 	private static class TransformedState extends ItemStackRenderState {
 		private final ItemStackRenderState delegate;
-		private final Matrix4fc transform;
+		private final Matrix4fc preItemTransform;
+		private final Matrix4fc localPrefix;
 		private final ItemTransform[] sharedItemTransform;
 		private final boolean reuseItemTransform;
+		private final boolean leftHand;
 
-		private TransformedState(ItemStackRenderState delegate, Matrix4fc transform,
-			ItemTransform[] sharedItemTransform, boolean reuseItemTransform) {
+		private TransformedState(ItemStackRenderState delegate, Matrix4fc preItemTransform, Matrix4fc localPrefix,
+			ItemTransform[] sharedItemTransform, boolean reuseItemTransform, boolean leftHand) {
 			this.delegate = delegate;
-			this.transform = transform;
+			this.preItemTransform = preItemTransform;
+			this.localPrefix = localPrefix;
 			this.sharedItemTransform = sharedItemTransform;
 			this.reuseItemTransform = reuseItemTransform;
+			this.leftHand = leftHand;
 		}
 
 		@Override
 		public LayerRenderState newLayer() {
-			return new TransformedLayer(delegate, delegate.newLayer(), transform, sharedItemTransform,
-				reuseItemTransform);
+			return new TransformedLayer(delegate, delegate.newLayer(), preItemTransform, localPrefix,
+				sharedItemTransform, reuseItemTransform, leftHand);
 		}
 
 		@Override
@@ -148,17 +154,24 @@ public class PotatoCannonItemRenderer implements ItemModel {
 
 	private static class TransformedLayer extends LayerRenderState {
 		private final LayerRenderState delegate;
-		private final Matrix4fc transform;
+		private final Matrix4fc preItemTransform;
+		private final Matrix4fc localPrefix;
 		private final ItemTransform[] sharedItemTransform;
 		private final boolean reuseItemTransform;
+		private final boolean leftHand;
+		private final Matrix4f itemTransform = new Matrix4f();
+		private final Matrix4f localTransform = new Matrix4f();
 
-		private TransformedLayer(ItemStackRenderState owner, LayerRenderState delegate, Matrix4fc transform,
-			ItemTransform[] sharedItemTransform, boolean reuseItemTransform) {
+		private TransformedLayer(ItemStackRenderState owner, LayerRenderState delegate, Matrix4fc preItemTransform,
+			Matrix4fc localPrefix, ItemTransform[] sharedItemTransform, boolean reuseItemTransform,
+			boolean leftHand) {
 			owner.super();
 			this.delegate = delegate;
-			this.transform = transform;
+			this.preItemTransform = preItemTransform;
+			this.localPrefix = localPrefix;
 			this.sharedItemTransform = sharedItemTransform;
 			this.reuseItemTransform = reuseItemTransform;
+			this.leftHand = leftHand;
 		}
 
 		@Override
@@ -183,17 +196,34 @@ public class PotatoCannonItemRenderer implements ItemModel {
 
 		@Override
 		public void setItemTransform(ItemTransform itemTransform) {
+			ItemTransform effectiveTransform = itemTransform;
 			if (reuseItemTransform && sharedItemTransform[0] != null)
-				delegate.setItemTransform(sharedItemTransform[0]);
-			else {
+				effectiveTransform = sharedItemTransform[0];
+			else
 				sharedItemTransform[0] = itemTransform;
-				delegate.setItemTransform(itemTransform);
-			}
+
+			delegate.setItemTransform(effectiveTransform);
+			PoseStack.Pose pose = new PoseStack.Pose();
+			effectiveTransform.apply(leftHand, pose);
+			this.itemTransform.set(pose.pose());
+			applyCombinedTransform();
 		}
 
 		@Override
 		public void setLocalTransform(Matrix4fc localTransform) {
-			delegate.setLocalTransform(new Matrix4f(transform).mul(localTransform));
+			this.localTransform.set(localTransform);
+			applyCombinedTransform();
+		}
+
+		private void applyCombinedTransform() {
+			// Layer rendering always applies the ItemTransform first. Conjugating the
+			// recoil moves it ahead of that transform, restoring the old camera-space
+			// motion instead of rotating the cannon downward around its model origin.
+			delegate.setLocalTransform(new Matrix4f(itemTransform).invert()
+				.mul(preItemTransform)
+				.mul(itemTransform)
+				.mul(localPrefix)
+				.mul(localTransform));
 		}
 
 		@Override

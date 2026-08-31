@@ -11,6 +11,7 @@ import com.simibubi.create.content.kinetics.belt.transport.TransportedItemStack;
 import com.simibubi.create.content.logistics.box.PackageItem;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 import dev.engine_room.flywheel.lib.model.baked.PartialModel;
 import net.createmod.catnip.api.client.render.SpriteShiftEntry;
 import net.createmod.ponder.api.client.level.PonderLevel;
@@ -30,7 +31,6 @@ import net.minecraft.core.Vec3i;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.DyeColor;
-import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -44,6 +44,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class BeltRenderer extends KineticBlockEntityRenderer<BeltBlockEntity> {
 	private static final Identifier BELT_SCROLL_TEXTURE = Create.asResource("textures/block/belt_scroll.png");
+	private static final Identifier DIAGONAL_BELT_SCROLL_TEXTURE =
+		Create.asResource("textures/block/belt_diagonal_scroll.png");
 	private static final Map<Integer, List<CachedBeltQuad>> HORIZONTAL_BELT_QUAD_CACHE = new ConcurrentHashMap<>();
 	private static final ThreadLocal<List<CachedBeltQuad>> BUILDING_BELT_QUADS = new ThreadLocal<>();
 	private List<BlockStateModelPart> pulleyModel;
@@ -52,8 +54,9 @@ public class BeltRenderer extends KineticBlockEntityRenderer<BeltBlockEntity> {
 		super(context);
 	}
 
-	public boolean shouldRenderOffScreen(BeltBlockEntity be) {
-		return be.isController();
+	@Override
+	public boolean shouldRenderOffScreen() {
+		return true;
 	}
 
 	@Override
@@ -76,10 +79,12 @@ public class BeltRenderer extends KineticBlockEntityRenderer<BeltBlockEntity> {
 			return;
 		if (isInvalid(be))
 			return;
-
 		// The 26.2 Flywheel scrolling instance is not yet a reliable replacement for
 		// the submitted belt surface. Keep the renderer-owned surface visible.
-		renderPulley(be, kineticState.partialTicks, state.lightCoords, ms, collector);
+		// Keep the belt pulley on the same Flywheel coordinate path as connected shafts.
+		// The compatibility renderer remains the fallback when visualization is disabled.
+		if (!CreateVisualizationManager.supportsVisualization(be.getLevel()))
+			renderPulley(be, kineticState.partialTicks, state.lightCoords, ms, collector);
 		renderAnimatedBelt(be, kineticState.partialTicks, state.lightCoords, ms, collector);
 		renderItems(be, kineticState.partialTicks, state.lightCoords, ms, collector);
 	}
@@ -127,10 +132,11 @@ public class BeltRenderer extends KineticBlockEntityRenderer<BeltBlockEntity> {
 
 	private static void renderAnimatedBelt(BeltBlockEntity be, float partialTicks, int light, PoseStack ms,
 		SubmitNodeCollector collector) {
+		BlockState blockState = be.getBlockState();
+		BeltSlope slope = blockState.getValue(BeltBlock.SLOPE);
 		if (!be.isController() || be.beltLength == 0)
 			return;
-		BlockState blockState = be.getBlockState();
-		if (blockState.getValue(BeltBlock.SLOPE) != BeltSlope.HORIZONTAL)
+		if (slope != BeltSlope.HORIZONTAL && !slope.isDiagonal() && slope != BeltSlope.VERTICAL)
 			return;
 
 		Direction facing = blockState.getValue(BeltBlock.HORIZONTAL_FACING);
@@ -140,12 +146,37 @@ public class BeltRenderer extends KineticBlockEntityRenderer<BeltBlockEntity> {
 		boolean alongX = facing.getAxis() == Axis.X;
 		if (alongX)
 			speed = -speed;
+		// The direction-aware vertical transform already cancels the controller's
+		// up/down axis direction. Only the pulley axis remains: both EAST and WEST
+		// use X-facing belt geometry and need the same additional inversion.
+		if (slope == BeltSlope.VERTICAL && facing.getAxis() == Axis.X)
+			speed = -speed;
 		float scroll = speed == 0 ? 0 : -time * speed / 480f;
 
 		float topScroll = scroll;
 		float bottomScroll = scroll + .5f;
-		collector.submitCustomGeometry(ms, com.simibubi.create.foundation.render.RenderTypes.belt(BELT_SCROLL_TEXTURE),
-			(pose, consumer) -> renderBeltQuads(pose, consumer, be.beltLength, facing, topScroll, bottomScroll, light));
+		int verticality = slope == BeltSlope.UPWARD ? 1 : slope == BeltSlope.DOWNWARD ? -1 : 0;
+		Identifier texture = slope.isDiagonal() ? DIAGONAL_BELT_SCROLL_TEXTURE : BELT_SCROLL_TEXTURE;
+		Direction geometryFacing = facing;
+		if (slope == BeltSlope.VERTICAL) {
+			ms.pushPose();
+			ms.translate(.5, .5, .5);
+			ms.mulPose(com.mojang.math.Axis.YP.rotationDegrees(facing.toYRot()));
+			// A vertical belt stores the direction from its controller to the other
+			// pulley in HORIZONTAL_FACING's axis direction. The generated strip grows
+			// along local +Z, so it must be tilted up or down to match that direction.
+			// Using a fixed +90 degrees made every vertical strip grow downward.
+			ms.mulPose(com.mojang.math.Axis.XP.rotationDegrees(-90 * facing.getAxisDirection()
+				.getStep()));
+			ms.translate(-.5, -.5, -.5);
+			geometryFacing = Direction.SOUTH;
+		}
+		Direction submittedFacing = geometryFacing;
+		collector.submitCustomGeometry(ms, com.simibubi.create.foundation.render.RenderTypes.belt(texture),
+			(pose, consumer) -> renderBeltQuads(pose, consumer, be.beltLength, submittedFacing, verticality,
+				topScroll, bottomScroll, light));
+		if (slope == BeltSlope.VERTICAL)
+			ms.popPose();
 	}
 
 	private static float getBeltSpeed(BeltBlockEntity be) {
@@ -179,10 +210,11 @@ public class BeltRenderer extends KineticBlockEntityRenderer<BeltBlockEntity> {
 	}
 
 	private static void renderBeltQuads(PoseStack.Pose pose, VertexConsumer consumer, int beltLength, Direction facing,
-		float topScroll, float bottomScroll, int light) {
+		int verticality, float topScroll, float bottomScroll, int light) {
 		for (CachedBeltQuad quad : HORIZONTAL_BELT_QUAD_CACHE.computeIfAbsent(beltLength,
 			BeltRenderer::buildHorizontalBeltQuads))
-			renderCachedBeltQuad(pose, consumer, quad, facing, quad.bottom() ? bottomScroll : topScroll, light);
+			renderCachedBeltQuad(pose, consumer, quad, facing, verticality,
+				quad.bottom() ? bottomScroll : topScroll, light);
 	}
 
 	private static List<CachedBeltQuad> buildHorizontalBeltQuads(int beltLength) {
@@ -201,19 +233,29 @@ public class BeltRenderer extends KineticBlockEntityRenderer<BeltBlockEntity> {
 	}
 
 	private static void renderCachedBeltQuad(PoseStack.Pose pose, VertexConsumer consumer, CachedBeltQuad quad,
-		Direction facing, float scroll, int light) {
+		Direction facing, int verticality, float scroll, int light) {
 		float[] vertices = quad.vertices();
 		float[] u = quad.u();
 		float[] v = quad.v();
-		float normalX = transformNormalX(facing, quad.normalX(), quad.normalZ());
-		float normalZ = transformNormalZ(facing, quad.normalX(), quad.normalZ());
+		float localNormalX = quad.normalX();
+		float localNormalY = quad.normalY();
+		float localNormalZ = quad.normalZ() - verticality * localNormalY;
+		float normalLength = Mth.sqrt(localNormalX * localNormalX + localNormalY * localNormalY
+			+ localNormalZ * localNormalZ);
+		if (normalLength != 0) {
+			localNormalX /= normalLength;
+			localNormalY /= normalLength;
+			localNormalZ /= normalLength;
+		}
+		float normalX = transformNormalX(facing, localNormalX, localNormalZ);
+		float normalZ = transformNormalZ(facing, localNormalX, localNormalZ);
 		for (int i = 0; i < 4; i++) {
 			int vertexOffset = i * 3;
 			float x = vertices[vertexOffset];
-			float y = vertices[vertexOffset + 1];
 			float z = vertices[vertexOffset + 2];
+			float y = vertices[vertexOffset + 1] + verticality * z;
 			addVertex(pose, consumer, transformX(facing, x, z), y, transformZ(facing, x, z),
-				u[i], v[i] + scroll, light, normalX, quad.normalY(), normalZ);
+				u[i], v[i] + scroll, light, normalX, localNormalY, normalZ);
 		}
 	}
 
@@ -514,7 +556,6 @@ public class BeltRenderer extends KineticBlockEntityRenderer<BeltBlockEntity> {
 			.scale(offset);
 		ms.pushPose();
 		ms.translate(offsetVec.x, offsetVec.y, offsetVec.z);
-		ms.translate(0, 3 / 32f, 0);
 
 		boolean alongX = beltFacing.getClockWise()
 			.getAxis() == Axis.X;
@@ -522,7 +563,9 @@ public class BeltRenderer extends KineticBlockEntityRenderer<BeltBlockEntity> {
 			sideOffset *= -1;
 		ms.translate(alongX ? sideOffset : 0, 0, alongX ? 0 : sideOffset);
 
+		ItemStackRenderState itemState = BeltItemRenderHelper.createRenderState(transported.stack);
 		boolean renderUpright = BeltHelper.isItemUpright(transported.stack);
+		boolean blockItem = BeltItemRenderHelper.isGui3d(itemState);
 		if (renderUpright) {
 			Vec3 cameraPosition = Minecraft.getInstance().gameRenderer.mainCamera()
 				.position();
@@ -530,15 +573,15 @@ public class BeltRenderer extends KineticBlockEntityRenderer<BeltBlockEntity> {
 			Vec3 diff = vectorForOffset.subtract(cameraPosition);
 			float yRot = (float) (Mth.atan2(diff.x, diff.z) + Math.PI);
 			ms.mulPose(com.mojang.math.Axis.YP.rotation(yRot));
-			ms.translate(0, 0, 1 / 16f);
+			ms.translate(0, 3 / 32d, 1 / 16f);
 		}
 
-		renderItem(ms, collector, light, transported.stack, transported.angle, renderUpright);
+		renderItem(ms, collector, light, transported.stack, itemState, transported.angle, renderUpright, blockItem);
 		ms.popPose();
 	}
 
 	private static void renderItem(PoseStack ms, SubmitNodeCollector collector, int light, ItemStack itemStack,
-		int angle, boolean renderUpright) {
+		ItemStackRenderState itemState, int angle, boolean renderUpright, boolean blockItem) {
 		if (itemStack.isEmpty())
 			return;
 
@@ -551,33 +594,29 @@ public class BeltRenderer extends KineticBlockEntityRenderer<BeltBlockEntity> {
 
 		for (int i = 0; i <= count; i++) {
 			ms.pushPose();
-			if (i > 0)
+			if (blockItem && !box)
 				ms.translate(random.nextFloat() * .0625f * i, 0, random.nextFloat() * .0625f * i);
 
 			if (box) {
-				// The belt renderer already raises all transported items by 3/32.
-				// Add the remaining 5/32 to match the original package height of 4/16.
-				ms.translate(0, 5 / 32f, 0);
+				ms.translate(0, 4 / 16f, 0);
 				ms.scale(1.5f, 1.5f, 1.5f);
 			} else {
 				ms.scale(.5f, .5f, .5f);
 			}
 
-			if (!box && !renderUpright) {
+			if (!blockItem && !renderUpright) {
 				ms.translate(0, -3 / 16f, 0);
 				ms.mulPose(com.mojang.math.Axis.XP.rotationDegrees(90));
 			}
 
-			ItemStackRenderState itemState = new ItemStackRenderState();
-			Minecraft.getInstance()
-				.getItemModelResolver()
-				.updateForTopItem(itemState, itemStack, ItemDisplayContext.FIXED, null, null, 0);
 			itemState.submit(ms, collector, light, OverlayTexture.NO_OVERLAY, 0);
 			ms.popPose();
 
-			if (!renderUpright)
-				ms.translate(0, 1 / 16d, 0);
-			else
+			if (!renderUpright) {
+				if (!blockItem)
+					ms.mulPose(com.mojang.math.Axis.YP.rotationDegrees(10));
+				ms.translate(0, blockItem ? 1 / 64d : 1 / 16d, 0);
+			} else
 				ms.translate(0, 0, -1 / 16f);
 		}
 

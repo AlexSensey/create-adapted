@@ -8,7 +8,7 @@ import com.simibubi.create.content.kinetics.base.ShaftRenderer;
 import com.simibubi.create.content.kinetics.gauge.GaugeBlock.Type;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.createmod.catnip.api.data.Iterate;
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
@@ -58,7 +58,7 @@ public class GaugeRenderer extends ShaftRenderer<GaugeBlockEntity> {
 			return;
 		if (isInvalid(be))
 			return;
-		if (VisualizationManager.supportsVisualization(be.getLevel()))
+		if (CreateVisualizationManager.supportsVisualization(be.getLevel()))
 			return;
 
 		BlockState gaugeState = be.getBlockState();

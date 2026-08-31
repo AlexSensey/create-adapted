@@ -1,0 +1,11 @@
+Changes since 0.96
+
+- Fixed a dedicated-server crash when a package entity was created or loaded.
+- Fixed a dedicated-server crash when selecting, extending, or placing train tracks.
+- Fixed nested NeoForge item transactions crashing Repackagers when packages were inserted through belts and funnels.
+- Fixed dedicated servers crashing when players used a wrench or belt connector on a conveyor belt.
+- Removed dedicated-server links to client-only Ponder rendering classes from shared package, fluid, and track logic.
+- Prevented concurrent entity-renderer registration from corrupting the renderer registry during client startup.
+- Public external-assets builds now refresh every nested class belonging to an updated compatibility class.
+- Moved additional renderer, preview, input and client packet handling out of shared block, item, entity, contraption, fluid and train classes.
+- Added a bytecode audit for dedicated-server classes to prevent client-only Minecraft classes from leaking back into server interactions.

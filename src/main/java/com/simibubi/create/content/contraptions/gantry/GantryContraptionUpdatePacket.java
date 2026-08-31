@@ -19,7 +19,7 @@ public record GantryContraptionUpdatePacket(int entityID, double coord, double m
 
 	@Override
 	public void handle(Player player) {
-		GantryContraptionEntity.handlePacket(this);
+		GantryContraptionClient.handlePacket(this);
 	}
 
 	@Override

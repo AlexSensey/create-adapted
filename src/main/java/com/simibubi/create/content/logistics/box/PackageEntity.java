@@ -10,11 +10,11 @@ import com.simibubi.create.AllDataComponents;
 import com.simibubi.create.AllEntityTypes;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.logistics.chute.ChuteBlock;
+import com.simibubi.create.foundation.ponder.PonderLevelCompat;
 
 import net.createmod.catnip.api.math.AngleHelper;
 import net.createmod.catnip.api.math.VecHelper;
 import net.createmod.catnip.platform.CatnipServices;
-import net.createmod.ponder.api.client.level.PonderLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
@@ -164,7 +164,7 @@ public class PackageEntity extends LivingEntity implements IEntityWithComplexSpa
 			originalEntity = null;
 		}
 
-		if (level() instanceof PonderLevel) {
+		if (PonderLevelCompat.isPonderLevel(level())) {
 			setDeltaMovement(getDeltaMovement().add(0, -0.06, 0));
 			if (position().y < 0.125)
 				discard();
@@ -185,7 +185,9 @@ public class PackageEntity extends LivingEntity implements IEntityWithComplexSpa
 	protected void verifyInitialEntity() {
 		if (!(originalEntity instanceof ItemEntity itemEntity))
 			return;
-		if (!itemEntity.hasPickUpDelay()) // See: ItemEntity#makeFakeItem
+		// A normal dropped item and Create outputs both have a pickup delay in 26.2.
+		// makeFakeItem() is distinguished by setting the age to 5999.
+		if (itemEntity.getAge() != 5999)
 			return;
 		discard();
 	}
@@ -240,7 +242,8 @@ public class PackageEntity extends LivingEntity implements IEntityWithComplexSpa
 		return false;
 	}
 
-	public InteractionResult interactAt(Player pPlayer, Vec3 vec, InteractionHand pHand) {
+	@Override
+	public InteractionResult interact(Player pPlayer, InteractionHand pHand, Vec3 vec) {
 		if (!pPlayer.getItemInHand(pHand)
 			.isEmpty())
 			return InteractionResult.PASS;

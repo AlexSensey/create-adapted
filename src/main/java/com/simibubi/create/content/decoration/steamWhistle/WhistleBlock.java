@@ -195,6 +195,13 @@ public class WhistleBlock extends Block implements IBE<WhistleBlockEntity>, IWre
 	}
 
 	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+										   BlockPos pos, boolean isMoving) {
+		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
+	}
+
+	@Override
 	public void neighborChanged(BlockState state, Level worldIn, BlockPos pos, Block blockIn, Orientation orientation,
 		boolean isMoving) {
 		if (worldIn.isClientSide())

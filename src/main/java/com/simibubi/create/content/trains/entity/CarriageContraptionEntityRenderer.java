@@ -104,7 +104,7 @@ public class CarriageContraptionEntityRenderer extends ContraptionEntityRenderer
 				: BlockPos.ZERO.relative(entity.getInitialOrientation()
 					.getCounterClockWise(), bogeySpacing);
 
-			if (!entity.getContraption()
+			if (!supportsVisualization(entity.level()) && !entity.getContraption()
 				.isHiddenInPortal(bogeyPos)) {
 				ms.pushPose();
 				translateBogey(ms, bogey, bogeySpacing, viewYRot, viewXRot, partialTicks);
@@ -150,6 +150,8 @@ public class CarriageContraptionEntityRenderer extends ContraptionEntityRenderer
 	}
 
 	private static boolean supportsVisualization(Object level) {
+		if (!com.simibubi.create.infrastructure.assets.ExternalCreateAssets.shouldUseFlywheelVisuals())
+			return false;
 		try {
 			Class<?> manager = Class.forName("dev.engine_room.flywheel.api.visualization.VisualizationManager");
 			for (java.lang.reflect.Method method : manager.getMethods()) {

@@ -1,15 +1,20 @@
 package com.simibubi.create.content.contraptions.actors.trainControls;
 
 import java.util.List;
+import java.util.Collection;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.simibubi.create.content.contraptions.behaviour.MovementContext;
+import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
+import com.simibubi.create.content.trains.entity.CarriageContraptionEntity;
 import com.simibubi.create.content.contraptions.render.ContraptionMatrices;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 import com.simibubi.create.foundation.virtualWorld.VirtualRenderWorld;
 
 import net.createmod.catnip.api.data.Iterate;
+import net.createmod.catnip.api.client.animation.AnimationTickHolder;
+import net.createmod.catnip.api.animation.LerpedFloat.Chaser;
 import net.createmod.catnip.api.math.AngleHelper;
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
 import net.minecraft.client.Minecraft;
@@ -22,8 +27,52 @@ import net.minecraft.core.Direction;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate.StructureBlockInfo;
 
 public class ControlsRenderer {
+	private static ControlsMovementBehaviour.LeverAngles updateAngles(MovementContext context) {
+		if (!(context.temporaryData instanceof ControlsMovementBehaviour.LeverAngles angles))
+			return null;
+		AbstractContraptionEntity entity = context.contraption.entity;
+		if (!(entity instanceof CarriageContraptionEntity carriage))
+			return null;
+		StructureBlockInfo info = context.contraption.getBlocks().get(context.localPos);
+		Direction initial = carriage.getInitialOrientation().getCounterClockWise();
+		boolean inverted = info != null && info.state().hasProperty(ControlsBlock.FACING)
+			&& !info.state().getValue(ControlsBlock.FACING).equals(initial);
+		if (ControlsHandler.getContraption() == entity && context.localPos.equals(ControlsHandler.getControlsPos())) {
+			Collection<Integer> pressed = ControlsHandler.currentlyPressed;
+			angles.equipAnimation.chase(1, .2f, Chaser.EXP);
+			angles.steering.chase((pressed.contains(3) ? 1 : 0) + (pressed.contains(2) ? -1 : 0), .2f, Chaser.EXP);
+			float direction = carriage.movingBackwards ^ inverted ? -1 : 1;
+			angles.speed.chase(Math.min(context.motion.length(), .5f) * direction, .2f, Chaser.EXP);
+		} else {
+			angles.equipAnimation.chase(0, .2f, Chaser.EXP);
+			angles.steering.chase(0, 0, Chaser.EXP);
+			angles.speed.chase(0, 0, Chaser.EXP);
+		}
+		return angles;
+	}
+
+	public static void renderInContraption(MovementContext context, VirtualRenderWorld world,
+		ContraptionMatrices matrices, MultiBufferSource buffer) {
+		ControlsMovementBehaviour.LeverAngles angles = updateAngles(context);
+		if (angles == null)
+			return;
+		float pt = AnimationTickHolder.getPartialTicks();
+		render(context, world, matrices, buffer, angles.equipAnimation.getValue(pt), angles.speed.getValue(pt),
+			angles.steering.getValue(pt));
+	}
+
+	public static void submitInContraption(MovementContext context, PoseStack ms, SubmitNodeCollector collector,
+		int light) {
+		ControlsMovementBehaviour.LeverAngles angles = updateAngles(context);
+		if (angles == null)
+			return;
+		float pt = AnimationTickHolder.getPartialTicks();
+		submitInContraption(context, ms, collector, light, angles.equipAnimation.getValue(pt),
+			angles.speed.getValue(pt), angles.steering.getValue(pt));
+	}
 
 	public static void render(MovementContext context, VirtualRenderWorld renderWorld, ContraptionMatrices matrices,
 		MultiBufferSource buffer, float equipAnimation, float firstLever, float secondLever) {

@@ -1,6 +1,9 @@
 {
   "values": [
     "create:sand_paper",
-    "create:red_sand_paper"
+    {
+      "id": "create:red_sand_paper",
+      "required": false
+    }
   ]
 }

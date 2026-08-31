@@ -99,6 +99,13 @@ public class StockTickerBlock extends HorizontalDirectionalBlock implements IBE<
 	}
 
 	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+										   BlockPos pos, boolean isMoving) {
+		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
+	}
+
+	@Override
 	public Class<StockTickerBlockEntity> getBlockEntityClass() {
 		return StockTickerBlockEntity.class;
 	}

@@ -7,7 +7,7 @@ import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntityRenderer;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.createmod.catnip.api.client.animation.AnimationTickHolder;
 import net.createmod.catnip.api.data.Iterate;
@@ -45,7 +45,7 @@ public class GantryCarriageRenderer extends KineticBlockEntityRenderer<GantryCar
 			return;
 		if (isInvalid(be))
 			return;
-		if (VisualizationManager.supportsVisualization(be.getLevel()))
+		if (CreateVisualizationManager.supportsVisualization(be.getLevel()))
 			return;
 
 		List<BlockStateModelPart> cogs = getCogsModel();
@@ -78,7 +78,9 @@ public class GantryCarriageRenderer extends KineticBlockEntityRenderer<GantryCar
 		ms.mulPose(com.mojang.math.Axis.XP.rotationDegrees(facing == Direction.UP ? 0 : facing == Direction.DOWN ? 180 : 90));
 		ms.mulPose(com.mojang.math.Axis.YP.rotationDegrees((alongFirst ^ facing.getAxis() == Axis.X) ? 0 : 90));
 		ms.translate(0, -9 / 16f, 0);
-		ms.mulPose(com.mojang.math.Axis.XP.rotationDegrees(-angleForBE));
+		// The submitted standalone model has the opposite local handedness from the
+		// Flywheel partial used by GantryCarriageVisual.
+		ms.mulPose(com.mojang.math.Axis.XP.rotationDegrees(angleForBE));
 		ms.translate(0, 9 / 16f, 0);
 		ms.translate(-.5, -.5, -.5);
 		collector.submitBlockModel(ms, RenderTypes.cutoutMovingBlock(), cogs, BlockModelRenderState.EMPTY_TINTS,

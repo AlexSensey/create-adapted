@@ -7,7 +7,7 @@ import java.util.Map;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.foundation.blockEntity.renderer.SafeBlockEntityRenderer;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.createmod.catnip.api.math.AngleHelper;
 import net.createmod.catnip.api.theme.Color;
@@ -54,7 +54,7 @@ public class AnalogLeverRenderer extends SafeBlockEntityRenderer<AnalogLeverBloc
 		if (state instanceof AnalogLeverRenderState leverState) {
 			leverState.blockState = be.getBlockState();
 			leverState.value = be.clientState.getValue(partialTicks);
-			leverState.visualized = VisualizationManager.supportsVisualization(be.getLevel());
+			leverState.visualized = CreateVisualizationManager.supportsVisualization(be.getLevel());
 		}
 	}
 

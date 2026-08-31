@@ -6,7 +6,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.simibubi.create.foundation.blockEntity.renderer.SafeBlockEntityRenderer;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.createmod.catnip.api.math.AngleHelper;
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
@@ -59,7 +59,7 @@ public class StickerRenderer extends SafeBlockEntityRenderer<StickerBlockEntity>
 		StickerBlockEntity be = stickerState.blockEntity;
 		if (be == null || isInvalid(be))
 			return;
-		if (VisualizationManager.supportsVisualization(be.getLevel()))
+		if (CreateVisualizationManager.supportsVisualization(be.getLevel()))
 			return;
 
 		BlockState blockState = stickerState.blockState;

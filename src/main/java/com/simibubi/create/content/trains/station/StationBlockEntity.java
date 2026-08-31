@@ -567,7 +567,6 @@ public class StationBlockEntity extends SmartBlockEntity implements Transformabl
 				return;
 		}
 
-		int prevLength = assemblyLength;
 		BlockPos targetPosition = edgePoint.getGlobalPosition();
 		BlockState trackState = edgePoint.getTrackBlockState();
 		ITrackBlock track = edgePoint.getTrack();
@@ -627,8 +626,6 @@ public class StationBlockEntity extends SmartBlockEntity implements Transformabl
 		bogeyCount = bogeyIndex;
 
 		if (level.isClientSide())
-			return;
-		if (prevLength == assemblyLength)
 			return;
 		if (isVirtual())
 			return;

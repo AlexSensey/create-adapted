@@ -12,6 +12,7 @@ import com.simibubi.create.content.trains.entity.CarriageContraption;
 import com.simibubi.create.foundation.virtualWorld.VirtualRenderWorld;
 
 import dev.engine_room.flywheel.api.visualization.VisualizationContext;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 import net.createmod.catnip.api.animation.LerpedFloat;
 import net.createmod.catnip.api.animation.LerpedFloat.Chaser;
 import net.createmod.catnip.api.math.VecHelper;
@@ -54,7 +55,8 @@ public class PortableStorageInterfaceMovement implements MovementBehaviour {
 	@Override
 	public void renderInContraption(MovementContext context, VirtualRenderWorld renderWorld,
 		ContraptionMatrices matrices, MultiBufferSource buffer) {
-		PortableStorageInterfaceRenderer.renderInContraption(context, renderWorld, matrices, buffer);
+		if (!CreateVisualizationManager.supportsVisualization(context.world))
+			PortableStorageInterfaceRenderer.renderInContraption(context, renderWorld, matrices, buffer);
 	}
 
 	@Override

@@ -30,7 +30,7 @@ import net.createmod.catnip.api.math.BlockFace;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.client.renderer.block.BlockAndTintGetter;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -358,7 +358,7 @@ public class PumpBlockEntity extends KineticBlockEntity {
 		}
 
 		@Override
-		public AttachmentTypes getRenderedRimAttachment(BlockAndTintGetter world, BlockPos pos, BlockState state,
+		public AttachmentTypes getRenderedRimAttachment(BlockGetter world, BlockPos pos, BlockState state,
 														Direction direction) {
 			AttachmentTypes attachment = super.getRenderedRimAttachment(world, pos, state, direction);
 			if (attachment == AttachmentTypes.RIM)

@@ -140,11 +140,11 @@ public class BlazeBurnerBlockItem extends BlockItem {
 		Level world = player.level();
 		spawnCaptureEffects(world, entity.position());
 		if (world.isClientSide())
-			return InteractionResult.SUCCESS;
+			return InteractionResult.FAIL;
 
 		giveBurnerItemTo(player, heldItem, hand);
 		entity.discard();
-		return InteractionResult.SUCCESS;
+		return InteractionResult.FAIL;
 	}
 
 	protected void giveBurnerItemTo(Player player, ItemStack heldItem, InteractionHand hand) {

@@ -17,7 +17,6 @@ import com.simibubi.create.content.trains.graph.TrackGraphLocation;
 import com.simibubi.create.content.trains.graph.TrackNode;
 import com.simibubi.create.content.trains.signal.SingleBlockEntityEdgePoint;
 import com.simibubi.create.content.trains.signal.TrackEdgePoint;
-import com.simibubi.create.content.trains.track.TrackBlockOutline.BezierPointSelection;
 import com.simibubi.create.foundation.advancement.AllAdvancements;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
@@ -26,10 +25,7 @@ import com.simibubi.create.infrastructure.config.AllConfigs;
 import com.tterrag.registrate.util.nullness.NonNullBiFunction;
 
 import net.createmod.catnip.api.data.Couple;
-import net.createmod.catnip.api.client.network.ClientNetworkHelper;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -194,19 +190,6 @@ public class TrackTargetingBlockItem extends BlockItem {
 
 	public EdgePointType<?> getType(ItemStack stack) {
 		return type;
-	}
-
-	public boolean useOnCurve(BezierPointSelection selection, ItemStack stack) {
-		Minecraft mc = Minecraft.getInstance();
-		LocalPlayer player = mc.player;
-		TrackBlockEntity be = selection.blockEntity();
-		BezierTrackPointLocation loc = selection.loc();
-		boolean front = player.getLookAngle()
-			.dot(selection.direction()) < 0;
-
-		ClientNetworkHelper.INSTANCE.sendToServer(new CurvedTrackSelectionPacket(be.getBlockPos(), loc.curveTarget(),
-			front, loc.segment(), player.getInventory().getSelectedSlot()));
-		return true;
 	}
 
 	public static enum OverlapResult {

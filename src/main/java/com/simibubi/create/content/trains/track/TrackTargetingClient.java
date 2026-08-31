@@ -31,6 +31,9 @@ import java.util.UUID;
 import dev.engine_room.flywheel.lib.model.baked.PartialModel;
 import dev.engine_room.flywheel.lib.transform.TransformStack;
 import net.createmod.catnip.api.data.Couple;
+import net.createmod.catnip.api.client.network.ClientNetworkHelper;
+import net.createmod.catnip.api.level.wrapper.SchematicLevel;
+import com.simibubi.create.foundation.ponder.PonderLevelCompat;
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -46,6 +49,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.HitResult.Type;
@@ -65,6 +69,52 @@ public class TrackTargetingClient {
 
 	static OverlapResult lastResult;
 	static TrackGraphLocation lastLocation;
+
+	public static boolean useOnCurve(BezierPointSelection selection) {
+		LocalPlayer player = Minecraft.getInstance().player;
+		if (player == null)
+			return false;
+		TrackBlockEntity be = selection.blockEntity();
+		BezierTrackPointLocation loc = selection.loc();
+		boolean front = player.getLookAngle()
+			.dot(selection.direction()) < 0;
+		ClientNetworkHelper.INSTANCE.sendToServer(new CurvedTrackSelectionPacket(be.getBlockPos(), loc.curveTarget(),
+			front, loc.segment(), player.getInventory().getSelectedSlot()));
+		return true;
+	}
+
+	public static void submitOverlay(LevelAccessor level, BlockPos pos, AxisDirection direction,
+		BezierTrackPointLocation bezier, PoseStack ms, SubmitNodeCollector collector, int light,
+		RenderedTrackOverlayType type, float scale) {
+		if (level instanceof SchematicLevel && !PonderLevelCompat.isPonderLevel(level))
+			return;
+		BlockState trackState = level.getBlockState(pos);
+		if (!(trackState.getBlock() instanceof ITrackBlock track))
+			return;
+		PartialModel overlay = track instanceof TrackBlock trackBlock
+			? trackBlock.prepareTrackOverlay(ms, level, pos, trackState, bezier, direction, type)
+			: track.prepareTrackOverlay(TransformStack.of(ms), level, pos, trackState, bezier, direction, type);
+		if (overlay == null)
+			return;
+		StandaloneModelKey<BlockStateModelPart> key = getOverlayModel(type);
+		BlockStateModelPart part = Minecraft.getInstance().getModelManager().getStandaloneModel(key);
+		if (part == null)
+			return;
+		ms.translate(.5, 0, .5);
+		ms.scale(scale * (1 + 1 / 16f), scale * (1 + 1 / 16f), scale * (1 + 1 / 16f));
+		ms.translate(-.5, 0, -.5);
+		collector.submitBlockModel(ms, RenderTypes.cutoutMovingBlock(), List.of(part),
+			BlockModelRenderState.EMPTY_TINTS, light, 0, 0);
+	}
+
+	private static StandaloneModelKey<BlockStateModelPart> getOverlayModel(RenderedTrackOverlayType type) {
+		return switch (type) {
+			case DUAL_SIGNAL -> CreateStandaloneModels.TRACK_SIGNAL_DUAL_OVERLAY;
+			case OBSERVER -> CreateStandaloneModels.TRACK_OBSERVER_OVERLAY;
+			case SIGNAL -> CreateStandaloneModels.TRACK_SIGNAL_OVERLAY;
+			case STATION -> CreateStandaloneModels.TRACK_STATION_OVERLAY;
+		};
+	}
 
 	public static void clientTick() {
 		Minecraft mc = Minecraft.getInstance();

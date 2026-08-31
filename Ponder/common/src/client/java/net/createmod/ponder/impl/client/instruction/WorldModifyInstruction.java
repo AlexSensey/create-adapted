@@ -1,0 +1,30 @@
+package net.createmod.ponder.impl.client.instruction;
+
+import net.createmod.ponder.api.client.element.WorldSectionElement;
+import net.createmod.ponder.api.client.instruction.PonderInstruction;
+import net.createmod.ponder.api.client.scene.PonderScene;
+import net.createmod.ponder.api.client.scene.Selection;
+
+public abstract class WorldModifyInstruction extends PonderInstruction {
+	private final Selection selection;
+
+	public WorldModifyInstruction(Selection selection) {
+		this.selection = selection;
+	}
+
+	@Override
+	public boolean isComplete() {
+		return true;
+	}
+
+	@Override
+	public void tick(PonderScene scene) {
+		runModification(selection, scene);
+		if (needsRedraw())
+			scene.forEach(WorldSectionElement.class, WorldSectionElement::queueRedraw);
+	}
+
+	protected abstract void runModification(Selection selection, PonderScene scene);
+
+	protected abstract boolean needsRedraw();
+}

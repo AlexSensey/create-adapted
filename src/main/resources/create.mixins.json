@@ -63,6 +63,7 @@
     "client.LivingEntityRendererMixin",
     "client.LivingEntityRenderStateMixin",
     "client.PlayerRendererMixin",
+    "client.EntityRenderersThreadSafetyMixin",
     "compat.xaeros.XaeroFullscreenMapAccessor",
     "compat.xaeros.XaeroFullscreenMapMixin",
     "compat.xaeros.XaeroPauseScreenOverrideMixin"

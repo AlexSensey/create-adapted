@@ -137,6 +137,13 @@ public class SteamEngineBlock extends FaceAttachedHorizontalDirectionalBlock
 	}
 
 	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+										   BlockPos pos, boolean isMoving) {
+		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
+	}
+
+	@Override
 	public VoxelShape getShape(BlockState pState, BlockGetter pLevel, BlockPos pPos, CollisionContext pContext) {
 		AttachFace face = pState.getValue(FACE);
 		Direction direction = pState.getValue(FACING);

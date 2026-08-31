@@ -10,6 +10,8 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.foundation.blockEntity.renderer.SafeBlockEntityRenderer;
 import com.simibubi.create.foundation.virtualWorld.VirtualRenderWorld;
 
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
+import dev.engine_room.flywheel.lib.visualization.VisualizationHelper;
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -25,6 +27,9 @@ public class BlockEntityRenderHelper {
 		@javax.annotation.Nullable Matrix4f lightTransform, MultiBufferSource buffer, float pt) {
 		for (int i = shouldRenderBEs.nextSetBit(0); i >= 0 && i < blockEntities.size(); i = shouldRenderBEs.nextSetBit(i + 1)) {
 			BlockEntity blockEntity = blockEntities.get(i);
+			if (CreateVisualizationManager.supportsVisualization(realLevel)
+				&& VisualizationHelper.skipVanillaRender(blockEntity))
+				continue;
 			BlockEntityRenderer<BlockEntity, ?> renderer = Minecraft.getInstance()
 				.getBlockEntityRenderDispatcher()
 				.getRenderer(blockEntity);

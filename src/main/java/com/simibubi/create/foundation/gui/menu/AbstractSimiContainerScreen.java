@@ -62,8 +62,8 @@ public abstract class AbstractSimiContainerScreen<T extends AbstractContainerMen
 	@Override
 	protected void init() {
 		super.init();
-		int effectiveWidth = windowWidth == -1 ? imageWidth : windowWidth;
-		int effectiveHeight = windowHeight == -1 ? imageHeight : windowHeight;
+		int effectiveWidth = getImageWidth();
+		int effectiveHeight = getImageHeight();
 		leftPos = (width - effectiveWidth) / 2 + windowXOffset;
 		topPos = (height - effectiveHeight) / 2 + windowYOffset;
 	}
@@ -140,8 +140,23 @@ public abstract class AbstractSimiContainerScreen<T extends AbstractContainerMen
 	}
 
 	public int getLeftOfCentered(int textureWidth) {
-		int effectiveWidth = windowWidth == -1 ? imageWidth : windowWidth;
-		return leftPos - windowXOffset + (effectiveWidth - textureWidth) / 2;
+		return leftPos - windowXOffset + (getImageWidth() - textureWidth) / 2;
+	}
+
+	@Override
+	public int getImageWidth() {
+		return windowWidth == -1 ? super.getImageWidth() : windowWidth;
+	}
+
+	@Override
+	public int getImageHeight() {
+		return windowHeight == -1 ? super.getImageHeight() : windowHeight;
+	}
+
+	@Override
+	protected boolean hasClickedOutside(double mouseX, double mouseY, int guiLeft, int guiTop) {
+		return mouseX < guiLeft || mouseY < guiTop
+			|| mouseX >= guiLeft + getImageWidth() || mouseY >= guiTop + getImageHeight();
 	}
 
 	public void renderPlayerInventory(GuiGraphicsExtractor graphics, int x, int y) {

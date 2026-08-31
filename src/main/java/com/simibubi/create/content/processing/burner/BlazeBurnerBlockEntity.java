@@ -16,14 +16,12 @@ import com.simibubi.create.content.processing.burner.BlazeBurnerBlock.HeatLevel;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 import net.createmod.catnip.api.animation.LerpedFloat;
 import net.createmod.catnip.api.animation.LerpedFloat.Chaser;
 import net.createmod.catnip.api.data.Iterate;
 import net.createmod.catnip.api.math.AngleHelper;
 import net.createmod.catnip.api.math.VecHelper;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
@@ -139,29 +137,15 @@ public class BlazeBurnerBlockEntity extends SmartBlockEntity {
 
 	private boolean shouldTickAnimation() {
 		// Offload the animation tick to the visual when flywheel in enabled
-		return !VisualizationManager.supportsVisualization(level);
+		return !CreateVisualizationManager.supportsVisualization(level);
 	}
 
 	void tickAnimation() {
-		boolean active = getHeatLevelFromBlock().isAtLeast(HeatLevel.FADING) && isValidBlockAbove();
+		BlazeBurnerClient.tickAnimation(this);
+	}
 
+	void tickAnimation(float target, boolean active) {
 		if (!active) {
-			float target = 0;
-			LocalPlayer player = Minecraft.getInstance().player;
-			if (player != null && !player.isInvisible()) {
-				double x;
-				double z;
-				if (isVirtual()) {
-					x = -4;
-					z = -10;
-				} else {
-					x = player.getX();
-					z = player.getZ();
-				}
-				double dx = x - (getBlockPos().getX() + 0.5);
-				double dz = z - (getBlockPos().getZ() + 0.5);
-				target = AngleHelper.deg(-Mth.atan2(dz, dx)) - 90;
-			}
 			target = headAngle.getValue() + AngleHelper.getShortestAngleDiff(headAngle.getValue(), target);
 			headAngle.chase(target, .25f, Chaser.exp(5));
 			headAngle.tickChaser();

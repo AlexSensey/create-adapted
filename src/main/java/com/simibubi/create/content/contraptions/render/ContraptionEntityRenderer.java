@@ -14,6 +14,7 @@ import com.simibubi.create.content.contraptions.actors.roller.RollerMovementBeha
 import com.simibubi.create.content.contraptions.actors.roller.RollerRenderer;
 import com.simibubi.create.content.contraptions.actors.trainControls.ControlsBlock;
 import com.simibubi.create.content.contraptions.actors.trainControls.ControlsMovementBehaviour;
+import com.simibubi.create.content.contraptions.actors.trainControls.ControlsRenderer;
 import com.simibubi.create.content.contraptions.behaviour.MovementContext;
 import com.simibubi.create.content.contraptions.gantry.GantryCarriageBlockEntity;
 import com.simibubi.create.content.contraptions.gantry.GantryContraptionEntity;
@@ -22,7 +23,9 @@ import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.content.kinetics.deployer.DeployerMovementBehaviour;
 import com.simibubi.create.content.kinetics.deployer.DeployerRenderer;
 import com.simibubi.create.content.processing.burner.BlazeBurnerMovementBehaviour;
+import com.simibubi.create.content.processing.burner.BlazeBurnerMovementClient;
 import com.simibubi.create.content.contraptions.bearing.StabilizedBearingMovementBehaviour;
+import com.simibubi.create.content.contraptions.bearing.StabilizedBearingMovementClient;
 import com.simibubi.create.content.kinetics.drill.DrillMovementBehaviour;
 import com.simibubi.create.content.kinetics.drill.DrillRenderer;
 import com.simibubi.create.content.kinetics.saw.SawMovementBehaviour;
@@ -32,6 +35,9 @@ import com.simibubi.create.foundation.virtualWorld.VirtualRenderWorld;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.joml.Matrix4f;
+
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
+import dev.engine_room.flywheel.lib.visualization.VisualizationHelper;
 
 import net.createmod.catnip.api.client.animation.AnimationTickHolder;
 import net.createmod.catnip.api.client.render.CachedBuffers;
@@ -62,7 +68,6 @@ import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
-import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -98,7 +103,8 @@ public class ContraptionEntityRenderer<C extends AbstractContraptionEntity>
 		ContraptionMatrices matrices = clientContraption.getMatrices();
 		matrices.setup(poseStack, entity);
 
-		renderStructure(entity, renderWorld, clientContraption.getRenderedBlocks(), matrices, buffers, partialTicks);
+		if (!CreateVisualizationManager.supportsVisualization(level))
+			renderStructure(entity, renderWorld, clientContraption.getRenderedBlocks(), matrices, buffers, partialTicks);
 		renderBlockEntities(level, renderWorld, clientContraption, matrices, buffers);
 		renderActors(level, renderWorld, contraption, matrices, buffers);
 
@@ -132,7 +138,8 @@ public class ContraptionEntityRenderer<C extends AbstractContraptionEntity>
 		VirtualRenderWorld renderWorld = clientContraption.getRenderLevel();
 		ms.pushPose();
 		entity.applyLocalTransforms(ms, state.partialTicks);
-		submitStructure(entity, renderWorld, clientContraption.getRenderedBlocks(), ms, collector, state.partialTicks);
+		if (!CreateVisualizationManager.supportsVisualization(entity.level()))
+			submitStructure(entity, renderWorld, clientContraption.getRenderedBlocks(), ms, collector, state.partialTicks);
 		submitBlockEntities(entity, renderWorld, clientContraption, ms, collector, cameraRenderState,
 			state.partialTicks);
 		submitActors(entity, renderWorld, contraption, ms, collector, state.partialTicks);
@@ -202,7 +209,11 @@ public class ContraptionEntityRenderer<C extends AbstractContraptionEntity>
 	}
 
 	private static int getRealLevelLight(AbstractContraptionEntity entity, BlockPos localPos, float partialTicks) {
-		BlockPos lightPos = BlockPos.containing(entity.toGlobalVector(Vec3.atCenterOf(localPos), partialTicks));
+		// Keep the outside-world light stable across the whole moving structure. Sampling
+		// every transformed block independently makes sails and other repeated blocks
+		// flash one at a time whenever they cross a light-cell boundary. Light sources
+		// carried by the contraption still come from renderWorld in the caller.
+		BlockPos lightPos = BlockPos.containing(entity.getLightProbePosition(partialTicks));
 		Level level = entity.level();
 		return LightCoordsUtil.pack(level.getBrightness(LightLayer.BLOCK, lightPos),
 			level.getBrightness(LightLayer.SKY, lightPos));
@@ -218,6 +229,9 @@ public class ContraptionEntityRenderer<C extends AbstractContraptionEntity>
 			 i >= 0 && i < clientContraption.renderedBlockEntityView.size();
 			 i = shouldRenderBlockEntities.nextSetBit(i + 1)) {
 			BlockEntity blockEntity = clientContraption.renderedBlockEntityView.get(i);
+			if (CreateVisualizationManager.supportsVisualization(entity.level())
+				&& VisualizationHelper.skipVanillaRender(blockEntity))
+				continue;
 			BlockEntityRenderer<BlockEntity, BlockEntityRenderState> renderer = Minecraft.getInstance()
 				.getBlockEntityRenderDispatcher()
 				.getRenderer(blockEntity);
@@ -256,6 +270,7 @@ public class ContraptionEntityRenderer<C extends AbstractContraptionEntity>
 	private static void submitActors(AbstractContraptionEntity entity, VirtualRenderWorld renderWorld,
 		Contraption contraption, PoseStack ms, SubmitNodeCollector collector, float partialTicks) {
 		Level level = entity.level();
+		boolean visualized = CreateVisualizationManager.supportsVisualization(level);
 		for (Pair<StructureTemplate.StructureBlockInfo, MovementContext> actor : contraption.getActors()) {
 			MovementContext context = actor.getRight();
 			if (context == null)
@@ -285,23 +300,23 @@ public class ContraptionEntityRenderer<C extends AbstractContraptionEntity>
 			int light = getContraptionBlockLight(entity, renderWorld, blockInfo.pos(), partialTicks);
 			if (movementBehaviour instanceof ContraptionControlsMovement)
 				ContraptionControlsRenderer.submitInContraption(context, ms, collector, light);
-			if (movementBehaviour instanceof ControlsMovementBehaviour controls)
-				controls.submitInContraption(context, ms, collector, light);
-			if (movementBehaviour instanceof PortableStorageInterfaceMovement)
+			if (movementBehaviour instanceof ControlsMovementBehaviour)
+				ControlsRenderer.submitInContraption(context, ms, collector, light);
+			if (!visualized && movementBehaviour instanceof PortableStorageInterfaceMovement)
 				PortableStorageInterfaceRenderer.submitInContraption(context, ms, collector);
 			if (movementBehaviour instanceof BlazeBurnerMovementBehaviour burner)
-				burner.submitInContraption(context, ms, collector, light);
-			if (movementBehaviour instanceof StabilizedBearingMovementBehaviour bearing)
-				bearing.submitInContraption(context, ms, collector, light);
+				BlazeBurnerMovementClient.submit(burner, context, ms, collector, light);
+			if (!visualized && movementBehaviour instanceof StabilizedBearingMovementBehaviour)
+				StabilizedBearingMovementClient.submit(context, ms, collector, light);
 			if (movementBehaviour instanceof DeployerMovementBehaviour)
 				DeployerRenderer.submitInContraption(context, ms, collector, light);
-			if (movementBehaviour instanceof DrillMovementBehaviour)
+			if (!visualized && movementBehaviour instanceof DrillMovementBehaviour)
 				DrillRenderer.submitInContraption(context, ms, collector, light);
-			if (movementBehaviour instanceof HarvesterMovementBehaviour)
+			if (!visualized && movementBehaviour instanceof HarvesterMovementBehaviour)
 				HarvesterRenderer.submitInContraption(context, ms, collector, light);
-			if (movementBehaviour instanceof RollerMovementBehaviour)
+			if (!visualized && movementBehaviour instanceof RollerMovementBehaviour)
 				RollerRenderer.submitInContraption(context, ms, collector, light);
-			if (movementBehaviour instanceof SawMovementBehaviour)
+			if (!visualized && movementBehaviour instanceof SawMovementBehaviour)
 				SawRenderer.submitInContraption(context, ms, collector, light);
 			ms.popPose();
 		}
@@ -359,7 +374,14 @@ public class ContraptionEntityRenderer<C extends AbstractContraptionEntity>
 
 			ms.pushPose();
 			ms.translate(blockInfo.pos().getX(), blockInfo.pos().getY(), blockInfo.pos().getZ());
-			movementBehaviour.renderInContraption(context, renderWorld, matrices, buffer);
+			if (movementBehaviour instanceof ControlsMovementBehaviour)
+				ControlsRenderer.renderInContraption(context, renderWorld, matrices, buffer);
+			else if (movementBehaviour instanceof BlazeBurnerMovementBehaviour burner)
+				BlazeBurnerMovementClient.render(burner, context, renderWorld, matrices, buffer);
+			else if (movementBehaviour instanceof StabilizedBearingMovementBehaviour)
+				StabilizedBearingMovementClient.render(context, renderWorld, matrices, buffer);
+			else
+				movementBehaviour.renderInContraption(context, renderWorld, matrices, buffer);
 			ms.popPose();
 		}
 	}

@@ -62,7 +62,7 @@ public class PulleyBlock extends HorizontalAxisKineticBlock implements IBE<Pulle
 
 	@Override
 	protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean isMoving) {
-		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		// KineticBlock forwards the 26.2 callback to the virtual onRemove method.
 		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
 	}
 

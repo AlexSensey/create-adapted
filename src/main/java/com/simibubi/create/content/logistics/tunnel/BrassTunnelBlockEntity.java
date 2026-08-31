@@ -603,6 +603,7 @@ public class BrassTunnelBlockEntity extends BeltTunnelBlockEntity implements IHa
 		compound.putBoolean("ConnectedLeft", connectedLeft);
 		compound.putBoolean("ConnectedRight", connectedRight);
 
+		compound.store("StackToDistribute", ItemStack.OPTIONAL_CODEC, stackToDistribute);
 		if (stackEnteredFrom != null)
 			compound.putString("StackEnteredFrom", stackEnteredFrom.name());
 
@@ -634,7 +635,8 @@ public class BrassTunnelBlockEntity extends BeltTunnelBlockEntity implements IHa
 		connectedLeft = compound.getBooleanOr("ConnectedLeft", false);
 		connectedRight = compound.getBooleanOr("ConnectedRight", false);
 
-		stackToDistribute = ItemStack.EMPTY;
+		stackToDistribute = compound.read("StackToDistribute", ItemStack.OPTIONAL_CODEC)
+			.orElse(ItemStack.EMPTY);
 		stackEnteredFrom =
 			compound.contains("StackEnteredFrom") ? Direction.valueOf(compound.getStringOr("StackEnteredFrom", "NORTH")) : null;
 

@@ -9,7 +9,7 @@ import com.simibubi.create.AllPartialModels;
 import com.simibubi.create.foundation.blockEntity.renderer.SmartBlockEntityRenderer;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import dev.engine_room.flywheel.lib.model.baked.PartialModel;
 import net.createmod.catnip.api.math.AngleHelper;
@@ -77,7 +77,7 @@ public class PackagerRenderer extends SmartBlockEntityRenderer<PackagerBlockEnti
 
 		Direction facing = packagerState.facing;
 
-		if (!VisualizationManager.supportsVisualization(packagerState.blockEntity.getLevel())) {
+		if (!CreateVisualizationManager.supportsVisualization(packagerState.blockEntity.getLevel())) {
 			ms.pushPose();
 			ms.translate(facing.getStepX() * .49999f, facing.getStepY() * .49999f, facing.getStepZ() * .49999f);
 			rotateCentered(ms, Axis.YP, AngleHelper.horizontalAngle(facing));

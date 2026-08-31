@@ -4,6 +4,7 @@ import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.content.contraptions.ControlledContraptionEntity;
 import com.simibubi.create.content.contraptions.OrientedContraptionEntity;
 import com.simibubi.create.content.contraptions.actors.seat.SeatEntity;
+import com.simibubi.create.content.contraptions.actors.seat.SeatEntityRenderer;
 import com.simibubi.create.content.contraptions.gantry.GantryContraptionEntity;
 import com.simibubi.create.content.contraptions.gantry.GantryContraptionEntityRenderer;
 import com.simibubi.create.content.contraptions.glue.SuperGlueEntity;
@@ -43,17 +44,21 @@ public class AllEntityTypes {
 
 	public static final EntityEntry<OrientedContraptionEntity> ORIENTED_CONTRAPTION = contraption("contraption",
 		OrientedContraptionEntity::new, () -> OrientedContraptionEntityRenderer::new, 5, 3, true)
+		.visual(() -> ContraptionVisual::new)
 		.register();
 	public static final EntityEntry<ControlledContraptionEntity> CONTROLLED_CONTRAPTION =
 		contraption("stationary_contraption", ControlledContraptionEntity::new, () -> ContraptionEntityRenderer::new,
 			20, 40, false)
+			.visual(() -> ContraptionVisual::new)
 			.register();
 	public static final EntityEntry<GantryContraptionEntity> GANTRY_CONTRAPTION = contraption("gantry_contraption",
 		GantryContraptionEntity::new, () -> GantryContraptionEntityRenderer::new, 10, 40, false)
+		.visual(() -> ContraptionVisual::new)
 		.register();
 	public static final EntityEntry<CarriageContraptionEntity> CARRIAGE_CONTRAPTION =
 		contraption("carriage_contraption", CarriageContraptionEntity::new,
 			() -> CarriageContraptionEntityRenderer::new, 15, 3, true)
+			.visual(() -> CarriageContraptionVisual::new)
 			.register();
 
 	public static final EntityEntry<SuperGlueEntity> SUPER_GLUE =
@@ -68,11 +73,12 @@ public class AllEntityTypes {
 		register("potato_projectile", PotatoProjectileEntity::new, () -> PotatoProjectileRenderer::new,
 			MobCategory.MISC, 4, 20, true, false, PotatoProjectileEntity::build).register();
 
-	public static final EntityEntry<SeatEntity> SEAT = register("seat", SeatEntity::new, () -> SeatEntity.Render::new,
+	public static final EntityEntry<SeatEntity> SEAT = register("seat", SeatEntity::new, () -> SeatEntityRenderer::new,
 		MobCategory.MISC, 5, Integer.MAX_VALUE, false, true, SeatEntity::build).register();
 
 	public static final EntityEntry<PackageEntity> PACKAGE = register("package", PackageEntity::new, () -> PackageRenderer::new,
 		MobCategory.MISC, 10, 3, true, false, PackageEntity::build)
+		.visual(() -> PackageVisual::new, true)
 		.register();
 
 	//

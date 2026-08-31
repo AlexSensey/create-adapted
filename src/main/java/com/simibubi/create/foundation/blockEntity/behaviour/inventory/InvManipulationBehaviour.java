@@ -153,7 +153,13 @@ public class InvManipulationBehaviour extends CapManipulationBehaviourBase<IItem
 
 		@Override
 		public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
-			return ItemUtil.insertItemReturnRemaining(handler, slot, stack, simulate, null);
+			// Item handlers can be invoked from inside another ResourceHandler operation
+			// (for example, a funnel inserting a package into a Repackager). Passing null
+			// would ask ItemUtil to open a second root transaction, which NeoForge rejects.
+			// Reuse the active transaction as the parent when one exists; open(null) still
+			// creates the normal root transaction for standalone item-handler calls.
+			return ItemUtil.insertItemReturnRemaining(handler, slot, stack, simulate,
+				Transaction.getCurrentOpenedTransaction());
 		}
 
 		@Override
@@ -164,7 +170,7 @@ public class InvManipulationBehaviour extends CapManipulationBehaviourBase<IItem
 			if (resource.isEmpty())
 				return ItemStack.EMPTY;
 			amount = Math.min(amount, resource.getMaxStackSize());
-			try (Transaction transaction = Transaction.openRoot()) {
+			try (Transaction transaction = Transaction.open(Transaction.getCurrentOpenedTransaction())) {
 				int extracted = handler.extract(slot, resource, amount, transaction);
 				if (!simulate)
 					transaction.commit();

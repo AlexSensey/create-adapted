@@ -1,0 +1,40 @@
+modLoader = "javafml"
+loaderVersion = "[0,)"
+license = "MIT"
+issueTrackerURL = "https://github.com/Creators-of-Create/Ponder/issues"
+
+[[mods]]
+modId = "ponder"
+version = "${version}"
+displayName = "Ponder"
+logoFile = "logo.png"
+description = "Visual in-Game Documentation"
+authors = "${authors}"
+credits = "${contributors}"
+
+[[mixins]]
+config="ponder.mixins.json"
+
+[[mixins]]
+config="ponder-common.mixins.json"
+
+[[dependencies.ponder]]
+modId = "neoforge"
+type="required"
+versionRange = "[${neo_version},)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.ponder]]
+modId = "minecraft"
+type="required"
+versionRange = "[${minecraft_version}]"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.ponder]]
+modId = "catnip"
+type="required"
+versionRange = "[${version}]"
+ordering = "AFTER"
+side = "BOTH"

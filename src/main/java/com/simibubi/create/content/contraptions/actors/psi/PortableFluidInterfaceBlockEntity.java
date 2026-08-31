@@ -2,6 +2,7 @@ package com.simibubi.create.content.contraptions.actors.psi;
 
 import com.simibubi.create.AllBlockEntityTypes;
 import com.simibubi.create.content.contraptions.Contraption;
+import com.simibubi.create.foundation.fluid.ResourceHandlerFluidAdapter.TransferCallback;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
@@ -132,8 +133,13 @@ public class PortableFluidInterfaceBlockEntity extends PortableStorageInterfaceB
 
 	}
 
-	private class InterfaceFluidResourceHandler implements ResourceHandler<FluidResource> {
+	private class InterfaceFluidResourceHandler implements ResourceHandler<FluidResource>, TransferCallback {
 		private final FluidJournal journal = new FluidJournal();
+
+		@Override
+		public void onTransferCommitted() {
+			onContentTransferred();
+		}
 
 		@Override
 		public int size() {

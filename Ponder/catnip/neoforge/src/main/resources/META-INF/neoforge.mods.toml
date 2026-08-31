@@ -1,0 +1,39 @@
+modLoader = "javafml"
+loaderVersion = "[0,)"
+license = "MIT"
+issueTrackerURL = "https://github.com/Creators-of-Create/Ponder/issues"
+
+[[mods]]
+modId = "catnip"
+version = "${version}"
+displayName = "Catnip"
+logoFile = "logo.png"
+description = "Library for Create & Ponder"
+authors = "${authors}"
+credits = "${contributors}"
+
+[[mixins]]
+config = "catnip-common.mixins.json"
+
+[[mixins]]
+config = "catnip-common-client.mixins.json"
+
+[[mixins]]
+config = "catnip-neoforge.mixins.json"
+
+[[dependencies.catnip]]
+modId = "neoforge"
+type="required"
+versionRange = "[${neo_version},)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.catnip]]
+modId = "minecraft"
+type="required"
+versionRange = "[${minecraft_version}]"
+ordering = "NONE"
+side = "BOTH"
+
+[[accessTransformers]]
+file="META-INF/accesstransformer.cfg"

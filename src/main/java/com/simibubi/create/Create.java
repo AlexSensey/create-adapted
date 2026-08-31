@@ -93,6 +93,14 @@ public class Create {
 	 */
 	private static final CreateRegistrate REGISTRATE = initRegistrate();
 
+	// AllItems is safe to queue here: its references to AllBlocks are deferred
+	// item factories. Doing only the item class under Create's JVM init lock
+	// prevents addons from observing partially queued standalone items without
+	// pulling in AllBlocks and its custom registries (which would deadlock with
+	// parallel addon construction).
+	@SuppressWarnings("unused")
+	private static final boolean ITEM_REGISTRATIONS_QUEUED = initItemRegistrations();
+
 	public static final ServerSchematicLoader SCHEMATIC_RECEIVER = initStatic("schematic receiver", ServerSchematicLoader::new);
 	public static final RedstoneLinkNetworkHandler REDSTONE_LINK_NETWORK_HANDLER = initStatic("redstone link network", RedstoneLinkNetworkHandler::new);
 	public static final TorquePropagator TORQUE_PROPAGATOR = initStatic("torque propagator", TorquePropagator::new);
@@ -169,6 +177,12 @@ public class Create {
 		}
 	}
 
+	private static boolean initItemRegistrations() {
+		startupDebug("static init: item registrations");
+		AllItems.register();
+		return true;
+	}
+
 	public Create(IEventBus eventBus, ModContainer modContainer) {
 		startupDebug("constructor start");
 		try {
@@ -207,6 +221,12 @@ public class Create {
 		LOGGER.info("{} {} initializing! Commit hash: {}", NAME, CreateBuildInfo.VERSION, CreateBuildInfo.GIT_COMMIT);
 		ModLoadingContext modLoadingContext = ModLoadingContext.get();
 
+		// Registrate 1.3 only installs listeners for registry types which already
+		// have entries when registerEventListeners() is called. Ensure the item
+		// registry is known first; AllItems was queued during safe static
+		// initialization and AllBlocks now contributes its BlockItems.
+		AllBlocks.register();
+
 		LOGGER.info("Create bootstrap: registrate listeners");
 		REGISTRATE.registerEventListeners(modEventBus);
 
@@ -216,8 +236,6 @@ public class Create {
 		AllArmorMaterials.register(modEventBus);
 		AllDisplaySources.register();
 		AllDisplayTargets.register();
-		AllBlocks.register();
-		AllItems.register();
 		AllFluids.register();
 		AllPaletteBlocks.register();
 		AllMenuTypes.register();

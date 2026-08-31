@@ -13,7 +13,7 @@ import com.simibubi.create.foundation.blockEntity.behaviour.ValueBoxTransform;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.createmod.catnip.api.client.animation.AnimationTickHolder;
 import net.createmod.catnip.api.data.Iterate;
@@ -92,7 +92,7 @@ public class ArmRenderer extends KineticBlockEntityRenderer<ArmBlockEntity> {
 		if (be == null || isInvalid(be))
 			return;
 
-		boolean usingFlywheel = VisualizationManager.supportsVisualization(be.getLevel());
+		boolean usingFlywheel = CreateVisualizationManager.supportsVisualization(be.getLevel());
 		if (!usingFlywheel)
 			submitCog(be, armState.partialTicks, ms, collector, state.lightCoords);
 		if (!usingFlywheel || !armState.heldItem.isEmpty())
@@ -363,7 +363,8 @@ public class ArmRenderer extends KineticBlockEntityRenderer<ArmBlockEntity> {
 		ms.mulPose(Axis.YP.rotationDegrees(baseAngle));
 	}
 
-	public boolean shouldRenderOffScreen(ArmBlockEntity be) {
+	@Override
+	public boolean shouldRenderOffScreen() {
 		return true;
 	}
 

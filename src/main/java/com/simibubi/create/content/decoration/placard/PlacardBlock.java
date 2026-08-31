@@ -195,6 +195,13 @@ public class PlacardBlock extends FaceAttachedHorizontalDirectionalBlock
 		}
 	}
 
+	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+										   BlockPos pos, boolean isMoving) {
+		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
+	}
+
 	public static void updateNeighbours(BlockState pState, Level pLevel, BlockPos pPos) {
 		pLevel.updateNeighborsAt(pPos, pState.getBlock());
 		pLevel.updateNeighborsAt(pPos.relative(getConnectedDirection(pState).getOpposite()), pState.getBlock());

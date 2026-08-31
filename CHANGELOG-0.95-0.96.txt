@@ -1,0 +1,4 @@
+Changes since 0.95
+
+- Fixed schematic placement preview sometimes showing the previous schematic.
+- Prevented stale schematic render data from surviving a schematic change or failed preview load.

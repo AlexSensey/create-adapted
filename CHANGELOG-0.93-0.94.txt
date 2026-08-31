@@ -1,0 +1,19 @@
+Create: Adapted 0.94 updates the moving-contraption information pipeline.
+
+The main Create client can now identify the exact local block targeted inside a moving
+contraption and retrieve its virtual Block Entity. Goggle overlays use that result to
+show the same tooltip information provided by a stationary block. This is used by
+Create Crafts & Additions: Adapted to display the synchronized energy and capacity of
+a Modular Accumulator while it is assembled into a moving contraption.
+
+The new targeting helper is also available to optional Jade integrations. Hover state
+is tracked by both local block position and contraption entity ID, preventing stale
+tooltips when switching between moving structures.
+
+No world-format migration is required from 0.93.
+
+The public external-assets package continues to bundle the adapted Catnip and Flywheel
+libraries, matching the working 0.93 distribution layout.
+
+The AE2 compatibility recipes for milling Sky Stone, milling Fluix Crystal, and
+mixing Fluix Crystal now use the Minecraft 26.2 ingredient format.

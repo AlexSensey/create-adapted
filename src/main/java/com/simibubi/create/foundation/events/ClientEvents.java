@@ -42,7 +42,7 @@ import com.simibubi.create.content.trains.entity.CarriageCouplingRenderer;
 import com.simibubi.create.content.trains.entity.TrainRelocator;
 import com.simibubi.create.content.trains.track.CurvedTrackInteraction;
 import com.simibubi.create.content.trains.track.TrackBlockOutline;
-import com.simibubi.create.content.trains.track.TrackPlacement;
+import com.simibubi.create.content.trains.track.TrackPlacementClient;
 import com.simibubi.create.content.trains.track.TrackPlacementOverlay;
 import com.simibubi.create.content.trains.track.TrackTargetingClient;
 import com.simibubi.create.foundation.blockEntity.behaviour.filtering.FilteringRenderer;
@@ -121,7 +121,7 @@ public class ClientEvents {
 		BeltConnectorHandler.tick();
 		ChassisRangeDisplay.tick();
 		ArmInteractionPointHandler.tick();
-		TrackPlacement.clientTick();
+		TrackPlacementClient.clientTick();
 		CurvedTrackInteraction.clientTick();
 		TrackTargetingClient.clientTick();
 		TrainHUD.tick();
@@ -229,7 +229,7 @@ public class ClientEvents {
 			EjectorTargetHandler.getPlacementPreviewColor());
 		TrackBlockOutline.submitCurveSelection(event.getPoseStack(), event.getSubmitNodeCollector(),
 			event.getLevelRenderState().cameraRenderState);
-		TrackPlacement.submit(event.getPoseStack(), event.getSubmitNodeCollector(),
+		TrackPlacementClient.submit(event.getPoseStack(), event.getSubmitNodeCollector(),
 			event.getLevelRenderState().cameraRenderState);
 		TrackTargetingClient.submit(event.getPoseStack(), event.getSubmitNodeCollector(),
 			event.getLevelRenderState().cameraRenderState);

@@ -77,6 +77,13 @@ public class SchematicannonBlock extends Block implements IBE<SchematicannonBloc
 	}
 
 	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+										   BlockPos pos, boolean isMoving) {
+		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
+	}
+
+	@Override
 	public Class<SchematicannonBlockEntity> getBlockEntityClass() {
 		return SchematicannonBlockEntity.class;
 	}

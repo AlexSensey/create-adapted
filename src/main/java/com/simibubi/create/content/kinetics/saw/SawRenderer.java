@@ -12,7 +12,7 @@ import com.simibubi.create.foundation.blockEntity.behaviour.filtering.FilteringB
 import com.simibubi.create.foundation.blockEntity.behaviour.filtering.FilteringRenderer;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 import com.simibubi.create.foundation.render.FlatGuiItemRenderer;
 import com.simibubi.create.foundation.virtualWorld.VirtualRenderWorld;
 
@@ -90,7 +90,7 @@ public class SawRenderer extends KineticBlockEntityRenderer<SawBlockEntity> {
 		Direction facing = blockState.getValue(SawBlock.FACING);
 		boolean vertical = facing.getAxis()
 			.isVertical();
-		if (!VisualizationManager.supportsVisualization(be.getLevel()))
+		if (!CreateVisualizationManager.supportsVisualization(be.getLevel()))
 			renderShaft(be, vertical, kineticState.partialTicks, state, ms, collector);
 
 		List<BlockStateModelPart> blade = getBladeModel(vertical, be.getSpeed());

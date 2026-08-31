@@ -1,12 +1,16 @@
 package dev.engine_room.flywheel.lib.model.baked;
 
 import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.jetbrains.annotations.UnknownNullability;
 
 import com.google.common.collect.ImmutableList;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
+import org.joml.Vector3f;
+import org.joml.Vector3fc;
 
 import dev.engine_room.flywheel.api.material.Material;
 import dev.engine_room.flywheel.api.model.Mesh;
@@ -21,6 +25,7 @@ class MeshEmitter {
 
 	private Material @UnknownNullability [] materials = new Material[INITIAL_CAPACITY];
 	private BufferBuilder @UnknownNullability [] bufferBuilders = new BufferBuilder[INITIAL_CAPACITY];
+	private List<Vector3f> @UnknownNullability [] vertexNormals = new List[INITIAL_CAPACITY];
 
 	// The number of valid elements in the above parallel arrays.
 	private int numBufferBuildersPopulated = 0;
@@ -53,7 +58,8 @@ class MeshEmitter {
 
 			if (renderedBuffer != null) {
 				Material material = materials[index];
-				Mesh mesh = MeshHelper.blockVerticesToMesh(renderedBuffer, "source=ModelBuilder" + ",material=" + material);
+				Mesh mesh = MeshHelper.blockVerticesToMesh(renderedBuffer,
+					"source=ModelBuilder" + ",material=" + material, vertexNormals[index]);
 				out.add(new Model.ConfiguredMesh(material, mesh));
 				renderedBuffer.close();
 			}
@@ -62,6 +68,7 @@ class MeshEmitter {
 		// Not strictly necessary to clear the arrays, but best not to hold on to references for too long here.
 		Arrays.fill(bufferBuilders, 0, numBufferBuildersPopulated, null);
 		Arrays.fill(materials, 0, numBufferBuildersPopulated, null);
+		Arrays.fill(vertexNormals, 0, numBufferBuildersPopulated, null);
 
 		currentIndex = 0;
 		numBufferBuildersPopulated = 0;
@@ -103,14 +110,34 @@ class MeshEmitter {
 		return bufferBuilder;
 	}
 
+	/**
+	 * Minecraft 26.2 removed normals from the 28-byte block vertex format. Keep the
+	 * baked quad normal alongside its buffer so MeshHelper can restore exactly the
+	 * normal the old VertexConsumer path wrote, including pose transformations.
+	 */
+	protected void recordVertexNormal(BufferBuilder bufferBuilder, Vector3fc normal) {
+		for (int index = 0; index < numBufferBuildersPopulated; index++) {
+			if (bufferBuilders[index] == bufferBuilder) {
+				List<Vector3f> normals = vertexNormals[index];
+				if (normals == null)
+					vertexNormals[index] = normals = new ArrayList<>();
+				normals.add(new Vector3f(normal));
+				return;
+			}
+		}
+	}
+
 	private void resize(int capacity) {
 		BufferBuilder[] newBufferBuilders = new BufferBuilder[capacity];
 		Material[] newMaterials = new Material[capacity];
+		List<Vector3f>[] newVertexNormals = new List[capacity];
 
 		System.arraycopy(bufferBuilders, 0, newBufferBuilders, 0, numBufferBuildersPopulated);
 		System.arraycopy(materials, 0, newMaterials, 0, numBufferBuildersPopulated);
+		System.arraycopy(vertexNormals, 0, newVertexNormals, 0, numBufferBuildersPopulated);
 
 		bufferBuilders = newBufferBuilders;
 		materials = newMaterials;
+		vertexNormals = newVertexNormals;
 	}
 }

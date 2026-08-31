@@ -8,7 +8,6 @@ import com.simibubi.create.infrastructure.config.AllConfigs;
 import net.createmod.catnip.api.animation.LerpedFloat;
 import net.createmod.catnip.api.animation.LerpedFloat.Chaser;
 import io.netty.buffer.ByteBuf;
-import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.network.codec.StreamCodec;
 
@@ -28,11 +27,10 @@ public class ServerSpeedProvider {
 	}
 
 	public static void clientTick() {
-		if (Minecraft.getInstance()
-			.hasSingleplayerServer()
-			&& Minecraft.getInstance()
-				.isPaused())
-			return;
+		ServerSpeedClient.tick();
+	}
+
+	static void tickClientState() {
 		modifier.tickChaser();
 		clientTimer++;
 	}

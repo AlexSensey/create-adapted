@@ -9,14 +9,12 @@ import com.simibubi.create.AllEnchantments;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.AllTags;
 import com.simibubi.create.foundation.utility.CreateLang;
-import com.simibubi.create.foundation.utility.DistExecutor;
 import com.simibubi.create.infrastructure.config.AllConfigs;
 
 import net.neoforged.api.distmarker.Dist;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap.Entry;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
@@ -147,7 +145,7 @@ public class BacktankUtil {
 	public static boolean isBarVisible(ItemStack stack, int usesPerTank) {
 		if (usesPerTank == 0)
 			return false;
-		Player player = DistExecutor.unsafeCallWhenOn(Dist.CLIENT, () -> () -> Minecraft.getInstance().player);
+		Player player = BacktankClient.getPlayer();
 		if (player == null)
 			return false;
 		List<ItemStack> backtanks = getAllWithAir(player);
@@ -159,7 +157,7 @@ public class BacktankUtil {
 	public static int getBarWidth(ItemStack stack, int usesPerTank) {
 		if (usesPerTank == 0)
 			return 13;
-		Player player = DistExecutor.unsafeCallWhenOn(Dist.CLIENT, () -> () -> Minecraft.getInstance().player);
+		Player player = BacktankClient.getPlayer();
 		if (player == null)
 			return 13;
 
@@ -185,7 +183,7 @@ public class BacktankUtil {
 	public static int getBarColor(ItemStack stack, int usesPerTank) {
 		if (usesPerTank == 0)
 			return 0;
-		Player player = DistExecutor.unsafeCallWhenOn(Dist.CLIENT, () -> () -> Minecraft.getInstance().player);
+		Player player = BacktankClient.getPlayer();
 		if (player == null)
 			return 0;
 		List<ItemStack> backtanks = getAllWithAir(player);

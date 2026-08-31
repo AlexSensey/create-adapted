@@ -78,6 +78,7 @@ import com.simibubi.create.content.kinetics.base.ShaftRenderer;
 import com.simibubi.create.content.kinetics.base.SingleAxisRotatingVisual;
 import com.simibubi.create.content.kinetics.belt.BeltBlockEntity;
 import com.simibubi.create.content.kinetics.belt.BeltRenderer;
+import com.simibubi.create.content.kinetics.belt.BeltVisual;
 import com.simibubi.create.content.kinetics.chainConveyor.ChainConveyorBlockEntity;
 import com.simibubi.create.content.kinetics.chainConveyor.ChainConveyorRenderer;
 import com.simibubi.create.content.kinetics.chainConveyor.ChainConveyorVisual;
@@ -169,11 +170,9 @@ import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelBlockEntit
 import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelRenderer;
 import com.simibubi.create.content.logistics.funnel.FunnelBlockEntity;
 import com.simibubi.create.content.logistics.funnel.FunnelRenderer;
-import com.simibubi.create.content.logistics.funnel.FunnelVisual;
 import com.simibubi.create.content.logistics.itemHatch.ItemHatchBlockEntity;
 import com.simibubi.create.content.logistics.packagePort.frogport.FrogportBlockEntity;
 import com.simibubi.create.content.logistics.packagePort.frogport.FrogportRenderer;
-import com.simibubi.create.content.logistics.packagePort.frogport.FrogportVisual;
 import com.simibubi.create.content.logistics.packagePort.postbox.PostboxBlockEntity;
 import com.simibubi.create.content.logistics.packagePort.postbox.PostboxRenderer;
 import com.simibubi.create.content.logistics.packager.PackagerBlockEntity;
@@ -187,7 +186,6 @@ import com.simibubi.create.content.logistics.tableCloth.TableClothBlockEntity;
 import com.simibubi.create.content.logistics.tableCloth.TableClothRenderer;
 import com.simibubi.create.content.logistics.tunnel.BeltTunnelBlockEntity;
 import com.simibubi.create.content.logistics.tunnel.BeltTunnelRenderer;
-import com.simibubi.create.content.logistics.tunnel.BeltTunnelVisual;
 import com.simibubi.create.content.logistics.tunnel.BrassTunnelBlockEntity;
 import com.simibubi.create.content.logistics.vault.ItemVaultBlockEntity;
 import com.simibubi.create.content.processing.basin.BasinBlockEntity;
@@ -427,6 +425,7 @@ public class AllBlockEntityTypes {
 
 	public static final BlockEntityEntry<BeltBlockEntity> BELT = REGISTRATE
 		.blockEntity("belt", BeltBlockEntity::new)
+		.visual(() -> BeltVisual::new, true)
 		.validBlocks(AllBlocks.BELT)
 		.register();
 
@@ -442,13 +441,11 @@ public class AllBlockEntityTypes {
 
 	public static final BlockEntityEntry<BeltTunnelBlockEntity> ANDESITE_TUNNEL = REGISTRATE
 		.blockEntity("andesite_tunnel", BeltTunnelBlockEntity::new)
-		.visual(() -> BeltTunnelVisual::new)
 		.validBlocks(AllBlocks.ANDESITE_TUNNEL)
 		.register();
 
 	public static final BlockEntityEntry<BrassTunnelBlockEntity> BRASS_TUNNEL = REGISTRATE
 		.blockEntity("brass_tunnel", BrassTunnelBlockEntity::new)
-		.visual(() -> BeltTunnelVisual::new)
 		.validBlocks(AllBlocks.BRASS_TUNNEL)
 		.register();
 
@@ -482,7 +479,6 @@ public class AllBlockEntityTypes {
 
 	public static final BlockEntityEntry<FrogportBlockEntity> PACKAGE_FROGPORT = REGISTRATE
 		.blockEntity("package_frogport", FrogportBlockEntity::new)
-		.visual(() -> FrogportVisual::new, true)
 		.validBlocks(AllBlocks.PACKAGE_FROGPORT)
 		.register();
 
@@ -782,7 +778,6 @@ public class AllBlockEntityTypes {
 
 	public static final BlockEntityEntry<FunnelBlockEntity> FUNNEL = REGISTRATE
 		.blockEntity("funnel", FunnelBlockEntity::new)
-		.visual(() -> FunnelVisual::new)
 		.validBlocks(AllBlocks.BRASS_FUNNEL, AllBlocks.BRASS_BELT_FUNNEL, AllBlocks.ANDESITE_FUNNEL,
 			AllBlocks.ANDESITE_BELT_FUNNEL)
 		.register();

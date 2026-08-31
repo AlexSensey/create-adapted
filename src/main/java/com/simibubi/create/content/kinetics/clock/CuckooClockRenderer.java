@@ -8,7 +8,7 @@ import com.simibubi.create.content.kinetics.base.KineticBlockEntityRenderer;
 import com.simibubi.create.content.kinetics.clock.CuckooClockBlockEntity.Animation;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.createmod.catnip.api.math.AngleHelper;
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
@@ -51,7 +51,7 @@ public class CuckooClockRenderer extends KineticBlockEntityRenderer<CuckooClockB
 			.getValue(CuckooClockBlock.HORIZONTAL_FACING);
 		float partialTicks = kineticState.partialTicks;
 
-		if (!VisualizationManager.supportsVisualization(be.getLevel()))
+		if (!CreateVisualizationManager.supportsVisualization(be.getLevel()))
 			submitShaftHalf(be, direction, partialTicks, state, ms, collector);
 
 		float yRot = AngleHelper.horizontalAngle(direction.getCounterClockWise());

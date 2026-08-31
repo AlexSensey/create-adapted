@@ -1,0 +1,36 @@
+package net.createmod.ponder.api.client.scene;
+
+import net.createmod.catnip.api.math.Pointing;
+import net.createmod.ponder.api.client.PonderPalette;
+import net.createmod.ponder.api.client.element.InputElementBuilder;
+import net.createmod.ponder.api.client.element.TextElementBuilder;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+
+public interface OverlayInstructions {
+	TextElementBuilder showText(int duration);
+
+	TextElementBuilder showOutlineWithText(Selection selection, int duration);
+
+	InputElementBuilder showControls(Vec3 sceneSpace, Pointing direction, int duration);
+
+	void chaseBoundingBoxOutline(PonderPalette color, Object slot, AABB boundingBox, int duration);
+
+	void showCenteredScrollInput(BlockPos pos, Direction side, int duration);
+
+	void showScrollInput(Vec3 location, Direction side, int duration);
+
+	void showRepeaterScrollInput(BlockPos pos, int duration);
+
+	void showFilterSlotInput(Vec3 location, int duration);
+
+	void showFilterSlotInput(Vec3 location, Direction side, int duration);
+
+	void showLine(PonderPalette color, Vec3 start, Vec3 end, int duration);
+
+	void showBigLine(PonderPalette color, Vec3 start, Vec3 end, int duration);
+
+	void showOutline(PonderPalette color, Object slot, Selection selection, int duration);
+}

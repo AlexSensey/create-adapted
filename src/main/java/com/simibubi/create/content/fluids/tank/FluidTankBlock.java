@@ -359,11 +359,19 @@ public class FluidTankBlock extends Block implements IWrenchable, IBE<FluidTankB
 			.dimension(), tank.getBlockPos()), tank);
 	}
 
+	public static FluidTankBlockEntity consumePreparedRemoval(ServerLevel world, BlockPos pos) {
+		return REMOVED_TANKS.remove(new RemovedTankKey(world.dimension(), pos));
+	}
+
 	@Override
 	protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel world, BlockPos pos, boolean isMoving) {
-		FluidTankBlockEntity removedTank = REMOVED_TANKS.remove(new RemovedTankKey(world.dimension(), pos));
+		FluidTankBlockEntity removedTank = consumePreparedRemoval(world, pos);
 		if (removedTank != null)
-			ConnectivityHandler.splitMultiAndReconnect(removedTank);
+			// Match the original onRemove ordering. Reset every surviving part
+			// first; removeController() schedules connectivity rebuilding for the
+			// following server tick. Reconnecting while the removal callback is
+			// still running can leave stale TOP/BOTTOM/SHAPE states behind.
+			ConnectivityHandler.splitMulti(removedTank);
 		super.affectNeighborsAfterRemoval(state, world, pos, isMoving);
 	}
 

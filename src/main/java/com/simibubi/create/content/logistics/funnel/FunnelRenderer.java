@@ -11,7 +11,6 @@ import com.simibubi.create.content.logistics.FlapStuffs;
 import com.simibubi.create.foundation.blockEntity.behaviour.filtering.FilteringBehaviour;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
 import com.simibubi.create.foundation.blockEntity.renderer.SmartBlockEntityRenderer;
 import com.simibubi.create.foundation.render.FlatGuiItemRenderer;
 
@@ -79,7 +78,7 @@ public class FunnelRenderer extends SmartBlockEntityRenderer<FunnelBlockEntity> 
 		BlockState blockState = be.getBlockState();
 		renderFilter(be, blockState, ms, collector, state.lightCoords);
 
-		if (!be.hasFlap() || VisualizationManager.supportsVisualization(be.getLevel()))
+		if (!be.hasFlap())
 			return;
 
 		Direction facing = AbstractFunnelBlock.getFunnelFacing(blockState);

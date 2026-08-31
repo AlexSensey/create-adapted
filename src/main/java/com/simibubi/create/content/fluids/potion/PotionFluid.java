@@ -69,8 +69,8 @@ public class PotionFluid extends VirtualFluid {
 
 	public static class PotionFluidType extends TintedFluidType {
 
-		public PotionFluidType(net.neoforged.neoforge.fluids.FluidType.Properties properties, ResourceLocation stillTexture, ResourceLocation flowingTexture) {
-			super(properties, stillTexture, flowingTexture);
+		public PotionFluidType(net.neoforged.neoforge.fluids.FluidType.Properties properties, Identifier stillTexture, Identifier flowingTexture) {
+			super(properties, ResourceLocation.fromIdentifier(stillTexture), ResourceLocation.fromIdentifier(flowingTexture));
 		}
 
 		@Override

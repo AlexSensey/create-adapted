@@ -8,13 +8,10 @@ import java.util.Map;
 
 import com.simibubi.create.Create;
 import com.simibubi.create.content.fluids.FluidTransportBehaviour.AttachmentTypes.ComponentPartials;
-import com.simibubi.create.content.logistics.box.PackageStyles;
-import com.simibubi.create.content.logistics.box.PackageStyles.PackageStyle;
 
 import net.createmod.catnip.api.data.Couple;
 import net.createmod.catnip.api.data.Iterate;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
-import net.minecraft.client.resources.model.geometry.QuadCollection;
 import net.minecraft.client.resources.model.ModelDebugName;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
@@ -25,7 +22,6 @@ import net.neoforged.neoforge.client.model.standalone.StandaloneModelKey;
 
 public class CreateStandaloneModels {
 	private static final Map<StandaloneModelKey<?>, Identifier> MODELS = new LinkedHashMap<>();
-	private static final Map<StandaloneModelKey<QuadCollection>, Identifier> QUAD_MODELS = new LinkedHashMap<>();
 
 	public static final StandaloneModelKey<BlockStateModelPart> WATER_WHEEL =
 		blockPart("water_wheel", Create.asResource("block/water_wheel/wheel"));
@@ -228,9 +224,6 @@ public class CreateStandaloneModels {
 		blockPart("chain_conveyor_wheel", Create.asResource("block/chain_conveyor/wheel"));
 	public static final StandaloneModelKey<BlockStateModelPart> CHAIN_CONVEYOR_SHAFT =
 		blockPart("chain_conveyor_shaft", Create.asResource("block/chain_conveyor/shaft"));
-	public static final Map<Identifier, StandaloneModelKey<QuadCollection>> PACKAGE_QUADS = new LinkedHashMap<>();
-	public static final Map<Identifier, StandaloneModelKey<QuadCollection>> PACKAGE_RIGGING_QUADS =
-		new LinkedHashMap<>();
 	public static final StandaloneModelKey<BlockStateModelPart> STICKER_HEAD =
 		blockPart("sticker_head", Create.asResource("block/sticker/head"));
 	public static final StandaloneModelKey<BlockStateModelPart> CONTRAPTION_CONTROLS_BUTTON =
@@ -259,6 +252,8 @@ public class CreateStandaloneModels {
 		blockPart("brass_belt_cover_z", Create.asResource("block/belt_cover/brass_belt_cover_z"));
 	public static final StandaloneModelKey<BlockStateModelPart> SHAFT_HALF =
 		blockPart("shaft_half", Create.asResource("block/shaft_half"));
+	public static final StandaloneModelKey<BlockStateModelPart> SHAFT =
+		blockPart("shaft", Create.asResource("block/shaft"));
 	public static final StandaloneModelKey<BlockStateModelPart> BEARING_TOP =
 		blockPart("bearing_top", Create.asResource("block/bearing/top"));
 	public static final StandaloneModelKey<BlockStateModelPart> BEARING_TOP_WOODEN =
@@ -475,15 +470,6 @@ public class CreateStandaloneModels {
 			FACTORY_PANEL_DOTTED.put(direction, blockPart("factory_panel_dotted_" + name,
 				Create.asResource("block/factory_gauge/connections/dotted_" + name)));
 		}
-		for (PackageStyle style : PackageStyles.STYLES) {
-			Identifier itemId = style.getItemId();
-			String modelName = itemId.getPath()
-				.replace('/', '_');
-			PACKAGE_QUADS.put(itemId,
-				quadCollection("chain_package_" + modelName, Create.asResource("item/" + itemId.getPath())));
-			PACKAGE_RIGGING_QUADS.put(itemId,
-				quadCollection("chain_package_rigging_" + modelName, style.getRiggingModel()));
-		}
 		putFoldingDoor("andesite_door");
 		putFoldingDoor("copper_door");
 		for (int i = 0; i < 8; i++)
@@ -520,20 +506,12 @@ public class CreateStandaloneModels {
 		return key;
 	}
 
-	private static StandaloneModelKey<QuadCollection> quadCollection(String name, Identifier model) {
-		StandaloneModelKey<QuadCollection> key = new StandaloneModelKey<>(debugName(name));
-		QUAD_MODELS.put(key, model);
-		return key;
-	}
-
 	private static ModelDebugName debugName(String name) {
 		return () -> Create.ID + ":" + name;
 	}
 
 	public static void register(ModelEvent.RegisterStandalone event) {
 		MODELS.forEach((key, model) -> registerBlockPart(event, key, model));
-		QUAD_MODELS.forEach((key, model) -> event.register(key,
-			SimpleUnbakedStandaloneModel.quadCollection(model)));
 	}
 
 	private static <T> void registerBlockPart(ModelEvent.RegisterStandalone event, StandaloneModelKey<T> key,

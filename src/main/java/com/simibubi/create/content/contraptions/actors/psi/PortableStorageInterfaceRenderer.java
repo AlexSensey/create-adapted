@@ -11,7 +11,7 @@ import com.simibubi.create.foundation.blockEntity.renderer.SafeBlockEntityRender
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 import com.simibubi.create.foundation.virtualWorld.VirtualRenderWorld;
 import dev.engine_room.flywheel.lib.model.baked.PartialModel;
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.createmod.catnip.api.client.animation.AnimationTickHolder;
 import net.createmod.catnip.api.animation.LerpedFloat;
@@ -58,7 +58,7 @@ public class PortableStorageInterfaceRenderer extends SafeBlockEntityRenderer<Po
 			psiState.blockState = be.getBlockState();
 			psiState.lit = be.isConnected();
 			psiState.progress = be.getExtensionDistance(partialTicks);
-			psiState.visualized = VisualizationManager.supportsVisualization(be.getLevel());
+			psiState.visualized = CreateVisualizationManager.supportsVisualization(be.getLevel());
 		}
 	}
 

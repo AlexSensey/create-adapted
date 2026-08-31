@@ -1,17 +1,21 @@
 val providerKey = "git_hash_provider"
 
-// Compute once, read in subprojects. Create: Adapted is distributed as a
-// single repository containing Ponder as an included build. Asking Git from
-// inside that composite build is unreliable on Windows, so allow the outer
-// build/release process to provide a stable identifier without requiring a
-// nested Git checkout.
+// compute once, read in subprojects
 if (project == rootProject) {
-    ext[providerKey] = providers.gradleProperty("createAdaptedGitHash")
-        .orElse("create-adapted-0.8")
+    ext[providerKey] = providers.zip(exec("git", "rev-parse", "HEAD"), exec("git", "status", "--porcelain")) { hash, status ->
+        val hasUnstaged = !status.replace("/M gradlew(\\.bat)?/", "").isEmpty()
+        return@zip hash + (if (hasUnstaged) "-modified" else "")
+    }
 }
 
 tasks.withType<Jar> {
     manifest.attributes(mapOf("Git-Hash" to "\"${findHash()}\""))
+}
+
+fun exec(vararg args: String): Provider<String> {
+    return providers.exec {
+        commandLine = args.asList()
+    }.standardOutput.asText.map { it.trim() }
 }
 
 fun findHash(): String {

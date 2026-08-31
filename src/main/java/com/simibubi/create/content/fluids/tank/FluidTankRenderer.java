@@ -212,8 +212,9 @@ public class FluidTankRenderer extends SafeBlockEntityRenderer<FluidTankBlockEnt
 		ms.popPose();
 	}
 
-	public boolean shouldRenderOffScreen(FluidTankBlockEntity be) {
-		return be.isController();
+	@Override
+	public boolean shouldRenderOffScreen() {
+		return true;
 	}
 
 	private List<BlockStateModelPart> getBoilerGaugeModel() {

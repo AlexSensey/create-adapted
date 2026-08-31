@@ -261,6 +261,13 @@ public class NixieTubeBlock extends DoubleFaceAttachedBlock
 		}
 	}
 
+	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+										   BlockPos pos, boolean isMoving) {
+		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
+	}
+
 	public ItemStack getCloneItemStack(LevelReader pLevel, BlockPos pPos, BlockState pState) {
 		return AllBlocks.ORANGE_NIXIE_TUBE.asStack();
 	}

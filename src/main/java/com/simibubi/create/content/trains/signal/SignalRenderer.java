@@ -4,9 +4,10 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.content.trains.signal.SignalBlockEntity.OverlayState;
 import com.simibubi.create.content.trains.signal.SignalBlockEntity.SignalState;
 import com.simibubi.create.content.trains.track.TrackTargetingBehaviour;
+import com.simibubi.create.content.trains.track.TrackTargetingClient;
 import com.simibubi.create.content.trains.track.TrackTargetingBehaviour.RenderedTrackOverlayType;
 import com.simibubi.create.foundation.blockEntity.renderer.SafeBlockEntityRenderer;
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
 import java.util.List;
@@ -59,7 +60,7 @@ public class SignalRenderer extends SafeBlockEntityRenderer<SignalBlockEntity> {
 		SignalBlockEntity be = signalState.blockEntity;
 		if (be == null || be.getLevel() == null)
 			return;
-		if (VisualizationManager.supportsVisualization(be.getLevel()))
+		if (CreateVisualizationManager.supportsVisualization(be.getLevel()))
 			return;
 
 		submitSignalLamp(be, ms, collector, state.lightCoords);
@@ -94,7 +95,7 @@ public class SignalRenderer extends SafeBlockEntityRenderer<SignalBlockEntity> {
 		ms.pushPose();
 		BlockPos offset = targetPosition.subtract(blockEntityPos);
 		ms.translate(offset.getX(), offset.getY(), offset.getZ());
-		TrackTargetingBehaviour.submit(level, targetPosition, target.getTargetDirection(), target.getTargetBezier(), ms,
+		TrackTargetingClient.submitOverlay(level, targetPosition, target.getTargetDirection(), target.getTargetBezier(), ms,
 			collector, light, type, 1);
 		ms.popPose();
 	}

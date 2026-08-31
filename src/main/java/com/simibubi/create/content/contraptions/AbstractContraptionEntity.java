@@ -40,7 +40,6 @@ import io.netty.handler.codec.DecoderException;
 import net.createmod.catnip.api.math.AngleHelper;
 import net.createmod.catnip.api.math.VecHelper;
 import net.createmod.catnip.platform.CatnipServices;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -711,7 +710,7 @@ public abstract class AbstractContraptionEntity extends Entity implements IEntit
 		AllSoundEvents.CONTRAPTION_DISASSEMBLE.playOnServer(level(), blockPosition());
 	}
 
-	private void moveCollidedEntitiesOnDisassembly(StructureTransform transform) {
+	void moveCollidedEntitiesOnDisassembly(StructureTransform transform) {
 		for (Entity entity : collidingEntities.keySet()) {
 			Vec3 localVec = toLocalVector(entity.position(), 0);
 			Vec3 transformed = transform.apply(localVec);
@@ -757,21 +756,6 @@ public abstract class AbstractContraptionEntity extends Entity implements IEntit
 
 	public boolean isStalled() {
 		return entityData.get(STALLED);
-	}
-
-	static void handleStallPacket(ContraptionStallPacket packet) {
-		if (Minecraft.getInstance().level.getEntity(packet.entityId()) instanceof AbstractContraptionEntity ce)
-			ce.handleStallInformation(packet.x(), packet.y(), packet.z(), packet.angle());
-	}
-
-	static void handleBlockChangedPacket(ContraptionBlockChangedPacket packet) {
-		if (Minecraft.getInstance().level.getEntity(packet.entityId()) instanceof AbstractContraptionEntity ce)
-			ce.handleBlockChange(packet.localPos(), packet.newState());
-	}
-
-	static void handleDisassemblyPacket(ContraptionDisassemblyPacket packet) {
-		if (Minecraft.getInstance().level.getEntity(packet.entityId()) instanceof AbstractContraptionEntity ce)
-			ce.moveCollidedEntitiesOnDisassembly(packet.transform());
 	}
 
 	protected abstract float getStalledAngle();

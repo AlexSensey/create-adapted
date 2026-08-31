@@ -12,7 +12,7 @@ import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollOp
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.createmod.catnip.api.math.AngleHelper;
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
@@ -60,7 +60,7 @@ public class BearingRenderer<T extends KineticBlockEntity & IBearingBlockEntity>
 			return;
 
 		renderScrollOptionOverlay(be, ms, collector);
-		if (VisualizationManager.supportsVisualization(be.getLevel()))
+		if (CreateVisualizationManager.supportsVisualization(be.getLevel()))
 			return;
 
 		Direction facing = be.getBlockState()

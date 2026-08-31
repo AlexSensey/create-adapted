@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.google.common.collect.ImmutableList;
 import com.simibubi.create.foundation.gui.ModularGuiLineBuilder;
+import com.simibubi.create.foundation.gui.FilteringEditBox;
 import com.simibubi.create.foundation.utility.CreateLang;
 
 import net.minecraft.ChatFormatting;
@@ -27,6 +28,6 @@ public abstract class TextScheduleInstruction extends ScheduleInstruction {
 		builder.addTextInput(0, 121, (e, t) -> modifyEditBox(e), "Text");
 	}
 
-	protected void modifyEditBox(EditBox box) {}
+	protected void modifyEditBox(FilteringEditBox box) {}
 
 }

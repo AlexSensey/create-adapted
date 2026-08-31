@@ -11,6 +11,7 @@ import com.simibubi.create.foundation.damageTypes.CreateDamageSources;
 import com.simibubi.create.foundation.virtualWorld.VirtualRenderWorld;
 
 import dev.engine_room.flywheel.api.visualization.VisualizationContext;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 import net.createmod.catnip.api.math.VecHelper;
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
 import net.minecraft.core.BlockPos;
@@ -42,7 +43,8 @@ public class DrillMovementBehaviour extends BlockBreakingMovementBehaviour {
 	@Override
 	public void renderInContraption(MovementContext context, VirtualRenderWorld renderWorld,
 		ContraptionMatrices matrices, MultiBufferSource buffer) {
-		DrillRenderer.renderInContraption(context, renderWorld, matrices, buffer);
+		if (!CreateVisualizationManager.supportsVisualization(context.world))
+			DrillRenderer.renderInContraption(context, renderWorld, matrices, buffer);
 	}
 
 	@Nullable

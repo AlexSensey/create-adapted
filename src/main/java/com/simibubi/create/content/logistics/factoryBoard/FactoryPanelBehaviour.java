@@ -53,11 +53,9 @@ import net.createmod.catnip.api.animation.LerpedFloat;
 import net.createmod.catnip.api.animation.LerpedFloat.Chaser;
 import net.createmod.catnip.api.data.codec.CatnipCodecUtils;
 import net.createmod.catnip.api.data.codec.CatnipCodecs;
-import net.createmod.catnip.api.client.gui.ScreenOpener;
 import net.createmod.catnip.api.nbt.NBTHelper;
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -78,7 +76,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackLinkedSet;
-import net.minecraft.client.renderer.block.BlockAndTintGetter;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -151,7 +149,7 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 	}
 
 	@Nullable
-	public static FactoryPanelBehaviour at(BlockAndTintGetter world, FactoryPanelConnection connection) {
+	public static FactoryPanelBehaviour at(BlockGetter world, FactoryPanelConnection connection) {
 		Object cached = connection.cachedSource.get();
 		if (cached instanceof FactoryPanelBehaviour fbe && !fbe.blockEntity.isRemoved())
 			return fbe;
@@ -171,7 +169,7 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 	}
 
 	@Nullable
-	public static FactoryPanelBehaviour at(BlockAndTintGetter world, FactoryPanelPosition pos) {
+	public static FactoryPanelBehaviour at(BlockGetter world, FactoryPanelPosition pos) {
 		if (world instanceof Level l && !l.isLoaded(pos.pos()))
 			return null;
 		if (!(world.getBlockEntity(pos.pos()) instanceof FactoryPanelBlockEntity fpbe))
@@ -195,7 +193,7 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 	}
 
 	@Nullable
-	public static FactoryPanelSupportBehaviour linkAt(BlockAndTintGetter world, FactoryPanelConnection connection) {
+	public static FactoryPanelSupportBehaviour linkAt(BlockGetter world, FactoryPanelConnection connection) {
 		Object cached = connection.cachedSource.get();
 		if (cached instanceof FactoryPanelSupportBehaviour fpsb && !fpsb.blockEntity.isRemoved())
 			return fpsb;
@@ -215,7 +213,7 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 	}
 
 	@Nullable
-	public static FactoryPanelSupportBehaviour linkAt(BlockAndTintGetter world, FactoryPanelPosition pos) {
+	public static FactoryPanelSupportBehaviour linkAt(BlockGetter world, FactoryPanelPosition pos) {
 		if (world instanceof Level l && !l.isLoaded(pos.pos()))
 			return null;
 		return BlockEntityBehaviour.get(world, pos.pos(), FactoryPanelSupportBehaviour.TYPE);
@@ -694,7 +692,7 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 
 		// Open configuration screen
 		if (isClientSide)
-			CatnipServices.PLATFORM.executeOnClientOnly(() -> () -> displayScreen(player));
+			CatnipServices.PLATFORM.executeOnClientOnly(() -> () -> FactoryPanelClient.openScreen(this));
 	}
 
 	public void enable() {
@@ -1124,11 +1122,6 @@ public class FactoryPanelBehaviour extends FilteringBehaviour implements MenuPro
 			case TOP_RIGHT -> TOP_RIGHT;
 			case BOTTOM_RIGHT -> BOTTOM_RIGHT;
 		};
-	}
-
-	public void displayScreen(Player player) {
-		if (player instanceof LocalPlayer)
-			ScreenOpener.open(new FactoryPanelScreen(this));
 	}
 
 	public int getIngredientStatusColor() {

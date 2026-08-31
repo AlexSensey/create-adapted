@@ -78,42 +78,11 @@ public class ContraptionHandlerClient {
 		if (!event.isUseItem())
 			return;
 
-		Couple<Vec3> rayInputs = getRayInputs(player);
-		Vec3 origin = rayInputs.getFirst();
-		Vec3 target = rayInputs.getSecond();
-		AABB aabb = new AABB(origin, target).inflate(16);
-
-		Collection<WeakReference<AbstractContraptionEntity>> contraptions =
-			ContraptionHandler.loadedContraptions.get(mc.level)
-				.values();
-
-		double bestDistance = Double.MAX_VALUE;
-		BlockHitResult bestResult = null;
-		AbstractContraptionEntity bestEntity = null;
-
-		for (WeakReference<AbstractContraptionEntity> ref : contraptions) {
-			AbstractContraptionEntity contraptionEntity = ref.get();
-			if (contraptionEntity == null)
-				continue;
-			if (!contraptionEntity.getBoundingBox()
-				.intersects(aabb))
-				continue;
-
-			BlockHitResult rayTraceResult = rayTraceContraption(origin, target, contraptionEntity);
-			if (rayTraceResult == null)
-				continue;
-
-			double distance = contraptionEntity.toGlobalVector(rayTraceResult.getLocation(), 1).distanceTo(origin);
-			if (distance > bestDistance)
-				continue;
-
-			bestResult = rayTraceResult;
-			bestDistance = distance;
-			bestEntity = contraptionEntity;
-		}
-
-		if (bestResult == null)
+		ContraptionHit contraptionHit = findContraptionHit(player);
+		if (contraptionHit == null)
 			return;
+		BlockHitResult bestResult = contraptionHit.hitResult();
+		AbstractContraptionEntity bestEntity = contraptionHit.entity();
 
 		InteractionHand hand = event.getHand();
 		Direction face = bestResult.getDirection();
@@ -128,6 +97,42 @@ public class ContraptionHandlerClient {
 		event.setCanceled(true);
 		event.setSwingHand(specialInteraction);
 	}
+
+	/** Returns the closest block hit inside a moving contraption, capped by the normal block reach hit. */
+	@Nullable
+	public static ContraptionHit findContraptionHit(LocalPlayer player) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level == null)
+			return null;
+
+		Couple<Vec3> rayInputs = getRayInputs(player);
+		Vec3 origin = rayInputs.getFirst();
+		Vec3 target = rayInputs.getSecond();
+		AABB aabb = new AABB(origin, target).inflate(16);
+		Collection<WeakReference<AbstractContraptionEntity>> contraptions =
+			ContraptionHandler.loadedContraptions.get(mc.level).values();
+
+		double bestDistance = Double.MAX_VALUE;
+		BlockHitResult bestResult = null;
+		AbstractContraptionEntity bestEntity = null;
+		for (WeakReference<AbstractContraptionEntity> ref : contraptions) {
+			AbstractContraptionEntity contraptionEntity = ref.get();
+			if (contraptionEntity == null || !contraptionEntity.getBoundingBox().intersects(aabb))
+				continue;
+			BlockHitResult result = rayTraceContraption(origin, target, contraptionEntity);
+			if (result == null)
+				continue;
+			double distance = contraptionEntity.toGlobalVector(result.getLocation(), 1).distanceTo(origin);
+			if (distance > bestDistance)
+				continue;
+			bestDistance = distance;
+			bestResult = result;
+			bestEntity = contraptionEntity;
+		}
+		return bestResult == null ? null : new ContraptionHit(bestEntity, bestResult, bestDistance);
+	}
+
+	public record ContraptionHit(AbstractContraptionEntity entity, BlockHitResult hitResult, double distance) {}
 
 	private static boolean handleSpecialInteractions(AbstractContraptionEntity contraptionEntity, Player player,
 													 BlockPos localPos, Direction side, InteractionHand interactionHand) {

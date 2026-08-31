@@ -21,7 +21,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.client.renderer.block.BlockAndTintGetter;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
@@ -236,7 +236,7 @@ public abstract class FluidTransportBehaviour extends BlockEntityBehaviour {
 				interfaces.put(d, new PipeConnection(d));
 	}
 
-	public AttachmentTypes getRenderedRimAttachment(BlockAndTintGetter world, BlockPos pos, BlockState state,
+	public AttachmentTypes getRenderedRimAttachment(BlockGetter world, BlockPos pos, BlockState state,
 		Direction direction) {
 		if (!canHaveFlowToward(state, direction))
 			return AttachmentTypes.NONE;

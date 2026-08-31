@@ -10,7 +10,7 @@ import com.simibubi.create.content.kinetics.base.KineticBlockEntityVisual;
 import com.simibubi.create.content.decoration.bracket.BracketedBlockEntityBehaviour;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.createmod.catnip.api.client.animation.AnimationTickHolder;
 import net.minecraft.client.Minecraft;
@@ -43,7 +43,7 @@ public class BracketedKineticBlockEntityRenderer extends KineticBlockEntityRende
 			return;
 		if (!(kineticState.blockEntity instanceof BracketedKineticBlockEntity be))
 			return;
-		if (VisualizationManager.supportsVisualization(be.getLevel()))
+		if (CreateVisualizationManager.supportsVisualization(be.getLevel()))
 			return;
 		if (!AllBlocks.LARGE_COGWHEEL.has(be.getBlockState())) {
 			super.submit(state, ms, collector, cameraRenderState);

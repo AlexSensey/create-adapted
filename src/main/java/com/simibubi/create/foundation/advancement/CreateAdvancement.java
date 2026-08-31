@@ -1,5 +1,7 @@
 package com.simibubi.create.foundation.advancement;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -97,6 +99,9 @@ public class CreateAdvancement {
 	void save(Consumer<AdvancementHolder> t, HolderLookup.Provider registries) {
 		if (parent != null)
 			mcBuilder.parent(parent.datagenResult);
+		for (ItemLike collectedItem : createBuilder.collectedItems)
+			mcBuilder.addCriterion(String.valueOf(createBuilder.keyIndex++),
+				InventoryChangeTrigger.TriggerInstance.hasItems(collectedItem));
 		if (createBuilder.collectedTag != null) {
 			ItemPredicate predicate = ItemPredicate.Builder.item()
 				.of(registries.lookupOrThrow(Registries.ITEM), createBuilder.collectedTag)
@@ -153,6 +158,7 @@ public class CreateAdvancement {
 		private ItemStack icon;
 		private ItemLike iconItem;
 		private Function<Provider, ItemStack> func;
+		private final List<ItemLike> collectedItems = new ArrayList<>();
 		private TagKey<Item> collectedTag;
 
 		Builder special(TaskType type) {
@@ -201,7 +207,7 @@ public class CreateAdvancement {
 		}
 
 		Builder whenIconCollected() {
-			return externalTrigger(InventoryChangeTrigger.TriggerInstance.hasItems(iconItem));
+			return whenItemCollected(iconItem);
 		}
 
 		Builder whenItemCollected(ItemProviderEntry<?, ?> item) {
@@ -209,7 +215,9 @@ public class CreateAdvancement {
 		}
 
 		Builder whenItemCollected(ItemLike itemProvider) {
-			return externalTrigger(InventoryChangeTrigger.TriggerInstance.hasItems(itemProvider));
+			collectedItems.add(itemProvider);
+			externalTrigger = true;
+			return this;
 		}
 
 		Builder whenItemCollected(TagKey<Item> tag) {

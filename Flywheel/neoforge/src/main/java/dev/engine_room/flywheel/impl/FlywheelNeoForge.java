@@ -15,8 +15,6 @@ import dev.engine_room.flywheel.impl.event.LevelRenderMatrices;
 import dev.engine_room.flywheel.impl.visualization.VisualizationEventHandler;
 import dev.engine_room.flywheel.lib.model.baked.PartialModelEventHandler;
 import dev.engine_room.flywheel.lib.util.LevelAttached;
-import dev.engine_room.flywheel.lib.util.RendererReloadCache;
-import dev.engine_room.flywheel.lib.util.ResourceReloadHolder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.synchronization.ArgumentTypeInfos;
 import net.neoforged.api.distmarker.Dist;
@@ -48,8 +46,12 @@ public final class FlywheelNeoForge {
 
 		NeoForgeFlwConfig.INSTANCE.registerSpecs(modContainer);
 
-		registerImplEventListeners(gameEventBus, modEventBus);
+		// Model and resource caches must be invalidated before visualization managers
+		// recreate their visuals at the end of a resource reload. Registering the
+		// implementation listener first made language changes rebuild visuals from
+		// the old caches and then immediately discard the models they referenced.
 		registerLibEventListeners(gameEventBus, modEventBus);
+		registerImplEventListeners(gameEventBus, modEventBus);
 		registerBackendEventListeners(gameEventBus, modEventBus);
 
 		CrashReportCallables.registerCrashCallable("Flywheel Backend", BackendManagerImpl::getBackendString);
@@ -88,9 +90,6 @@ public final class FlywheelNeoForge {
 
 	private static void registerLibEventListeners(IEventBus gameEventBus, IEventBus modEventBus) {
 		gameEventBus.addListener((LevelEvent.Unload e) -> LevelAttached.invalidateLevel(e.getLevel()));
-
-		modEventBus.addListener((EndClientResourceReloadEvent e) -> RendererReloadCache.onReloadLevelRenderer());
-		modEventBus.addListener((EndClientResourceReloadEvent e) -> ResourceReloadHolder.onEndClientResourceReload());
 
 		modEventBus.addListener(PartialModelEventHandler::onRegisterStandalone);
 	}

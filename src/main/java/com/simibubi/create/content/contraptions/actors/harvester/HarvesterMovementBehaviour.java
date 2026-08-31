@@ -22,7 +22,7 @@ import com.simibubi.create.foundation.virtualWorld.VirtualRenderWorld;
 import com.simibubi.create.infrastructure.config.AllConfigs;
 
 import dev.engine_room.flywheel.api.visualization.VisualizationContext;
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 import net.createmod.catnip.api.math.VecHelper;
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
 import net.minecraft.core.BlockPos;
@@ -227,7 +227,7 @@ public class HarvesterMovementBehaviour implements MovementBehaviour {
 	@Override
 	public void renderInContraption(MovementContext context, VirtualRenderWorld renderWorld,
 									ContraptionMatrices matrices, MultiBufferSource buffers) {
-		if (!false)
+		if (!CreateVisualizationManager.supportsVisualization(context.world))
 			HarvesterRenderer.renderInContraption(context, renderWorld, matrices, buffers);
 	}
 

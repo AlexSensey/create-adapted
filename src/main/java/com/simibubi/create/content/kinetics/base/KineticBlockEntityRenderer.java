@@ -7,8 +7,9 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.foundation.blockEntity.renderer.SafeBlockEntityRenderer;
+import com.simibubi.create.infrastructure.assets.ExternalCreateAssets;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.createmod.catnip.api.client.animation.AnimationTickHolder;
 import net.createmod.catnip.api.client.render.CachedBuffers;
@@ -64,7 +65,8 @@ public class KineticBlockEntityRenderer<T extends KineticBlockEntity> extends Sa
 			return;
 		// The subclass renderer may still submit non-instanced details after this
 		// method returns, but the base rotating part is already owned by Flywheel.
-		if (VisualizationManager.supportsVisualization(be.getLevel()))
+		if (ExternalCreateAssets.shouldUseFlywheelVisuals()
+			&& CreateVisualizationManager.supportsVisualization(be.getLevel()))
 			return;
 
 		BlockState renderedState = getRenderedBlockState((T) be);
@@ -84,7 +86,8 @@ public class KineticBlockEntityRenderer<T extends KineticBlockEntity> extends Sa
 		int light, int overlay) {
 		if (isInvalid(be))
 			return;
-		if (VisualizationManager.supportsVisualization(be.getLevel()))
+		if (ExternalCreateAssets.shouldUseFlywheelVisuals()
+			&& CreateVisualizationManager.supportsVisualization(be.getLevel()))
 			return;
 
 		BlockState renderedState = getRenderedBlockState(be);

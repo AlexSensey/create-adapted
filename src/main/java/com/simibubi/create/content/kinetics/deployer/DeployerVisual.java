@@ -10,6 +10,7 @@ import org.joml.Quaternionf;
 import com.mojang.math.Axis;
 import com.simibubi.create.AllPartialModels;
 import com.simibubi.create.content.kinetics.base.ShaftVisual;
+import com.simibubi.create.infrastructure.assets.ExternalCreateAssets;
 
 import dev.engine_room.flywheel.api.instance.Instance;
 import dev.engine_room.flywheel.api.visual.DynamicVisual;
@@ -43,6 +44,12 @@ public class DeployerVisual extends ShaftVisual<DeployerBlockEntity> implements 
 
     public DeployerVisual(VisualizationContext context, DeployerBlockEntity blockEntity, float partialTick) {
         super(context, blockEntity, partialTick);
+
+		// The external-assets edition renders this shaft through DeployerRenderer.
+		// Its player-supplied resource pack is mounted too late for this particular
+		// Flywheel partial on some clean installations.
+		if (ExternalCreateAssets.isExternalEdition())
+			rotatingModel.setVisible(false);
 
         facing = blockState.getValue(FACING);
 

@@ -89,6 +89,8 @@ public class VisualizationManagerImpl implements VisualizationManager {
 		if (level instanceof Level l) {
 			LevelExtension.getAllLoadedEntities(l)
 					.forEach(entities::queueAdd);
+			LevelExtension.getAllLoadedBlockEntities(l)
+					.forEach(blockEntities::queueAdd);
 		}
 	}
 

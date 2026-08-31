@@ -13,7 +13,6 @@
     "MinecraftMixin",
     "ModelPartAccessor",
     "PoseStackMixin",
-    "compat.sodium.ExtendedBlockEntityTypeMixin",
     "visualmanage.BlockEntityRenderDispatcherMixin",
     "visualmanage.BlockEntityMixin",
     "visualmanage.LevelChunkMixin",

@@ -44,7 +44,7 @@ final class BakedModelBufferer {
 		emitters.prepare(materialFunction);
 
 		long seed = state.getSeed(pos);
-		objects.blockRenderer.tesselateBlock((x, y, z, quad, instance) -> {
+		objects.partialModelRenderer.tesselateBlock((x, y, z, quad, instance) -> {
 			NeoforgeMeshEmitter emitter = emitters.getEmitter(renderType(quad.materialInfo().layer()));
 			poses.pushPose();
 			poses.translate(x, y, z);
@@ -139,6 +139,10 @@ final class BakedModelBufferer {
 		final MeshEmitterManager<NeoforgeMeshEmitter> emitters = new MeshEmitterManager<>(NeoforgeMeshEmitter::new);
 		final TransformingVertexConsumer transformingWrapper = new TransformingVertexConsumer();
 		final DiscardingVertexConsumer discardingConsumer = new DiscardingVertexConsumer();
+		// The old Flywheel BakedModelBuilder explicitly passed checkSides=false.
+		// Partial models are transformed away from their baked cardinal directions,
+		// so block-face culling here drops valid OBJ sides after rotation.
+		final ModelBlockRenderer partialModelRenderer = new ModelBlockRenderer(true, false, Minecraft.getInstance().getBlockColors());
 		final ModelBlockRenderer blockRenderer = new ModelBlockRenderer(true, true, Minecraft.getInstance().getBlockColors());
 	}
 }

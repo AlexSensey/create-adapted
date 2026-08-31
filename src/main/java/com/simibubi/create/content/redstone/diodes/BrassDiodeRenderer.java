@@ -10,7 +10,7 @@ import com.simibubi.create.foundation.model.CreateStandaloneModels;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueBehaviour;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueLabelRenderer;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.createmod.catnip.api.theme.Color;
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
@@ -54,7 +54,7 @@ public class BrassDiodeRenderer extends SafeBlockEntityRenderer<BrassDiodeBlockE
 		if (state instanceof BrassDiodeRenderState diodeState)
 			diodeState.maxState = be.maxState;
 		if (state instanceof BrassDiodeRenderState diodeState)
-			diodeState.visualized = VisualizationManager.supportsVisualization(be.getLevel());
+			diodeState.visualized = CreateVisualizationManager.supportsVisualization(be.getLevel());
 	}
 
 	@Override

@@ -22,6 +22,7 @@ import com.simibubi.create.content.equipment.symmetryWand.SymmetryWandItemRender
 import com.simibubi.create.content.equipment.zapper.terrainzapper.WorldshaperItemRenderer;
 import com.simibubi.create.content.decoration.copycat.CopycatBlockEntity;
 import com.simibubi.create.content.decoration.copycat.CopycatPanelBlock;
+import com.simibubi.create.content.decoration.copycat.CopycatSpecialCases;
 import com.simibubi.create.content.decoration.copycat.CopycatStepBlock;
 import com.simibubi.create.content.decoration.girder.GirderBlock;
 import com.simibubi.create.content.decoration.girder.GirderEncasedShaftBlock;
@@ -205,6 +206,12 @@ public class ModelSwapper {
 
 			List<BlockStateModelPart> materialParts = new ArrayList<>();
 			materialModel.collectParts(level, pos, material, random, materialParts);
+			// A trapdoor already has exactly the thin geometry a panel needs. Cropping that geometry a
+			// second time can collapse all of its quads, which made these copycats appear transparent.
+			if (CopycatSpecialCases.isTrapdoorMaterial(material)) {
+				parts.addAll(materialParts);
+				return;
+			}
 			Direction facing = state.getValue(CopycatPanelBlock.FACING);
 			for (BlockStateModelPart part : materialParts)
 				parts.add(new CopycatPanelPart(part, facing));
@@ -495,6 +502,7 @@ public class ModelSwapper {
 		return AllBlocks.SHAFT.has(state)
 			|| AllBlocks.COGWHEEL.has(state)
 			|| AllBlocks.LARGE_COGWHEEL.has(state)
+			|| AllBlocks.HAND_CRANK.has(state)
 			|| AllBlocks.CRUSHING_WHEEL.has(state);
 	}
 
@@ -791,7 +799,7 @@ public class ModelSwapper {
 			List<BlockStateModelPart> parts) {
 			List<BlockStateModelPart> originalParts = new ArrayList<>();
 			super.collectParts(level, pos, state, random, originalParts);
-			int culledFaces = connectedFaces(level, pos);
+			int culledFaces = connectedFaces(level, pos, state);
 			for (BlockStateModelPart part : originalParts)
 				parts.add(new FluidTankPart(part, culledFaces));
 		}
@@ -799,14 +807,22 @@ public class ModelSwapper {
 		@Override
 		public Object createGeometryKey(BlockAndTintGetter level, BlockPos pos, BlockState state,
 			RandomSource random) {
-			return Arrays.asList(super.createGeometryKey(level, pos, state, random), connectedFaces(level, pos));
+			return Arrays.asList(super.createGeometryKey(level, pos, state, random), connectedFaces(level, pos, state));
 		}
 
-		private static int connectedFaces(BlockAndTintGetter level, BlockPos pos) {
+		private static int connectedFaces(BlockAndTintGetter level, BlockPos pos, BlockState state) {
 			int mask = 0;
-			for (Direction direction : net.createmod.catnip.api.data.Iterate.horizontalDirections)
-				if (ConnectivityHandler.isConnected(level, pos, pos.relative(direction)))
+			for (Direction direction : net.createmod.catnip.api.data.Iterate.horizontalDirections) {
+				BlockPos neighbourPos = pos.relative(direction);
+				// During a client-side geometry rebuild the controller data can briefly be
+				// unavailable even though the tank blocks have already joined visually.
+				// Falling back to the neighbouring tank block keeps the shared window and
+				// frame planes out of a formed tank instead of leaving internal dividers.
+				boolean connected = ConnectivityHandler.isConnected(level, pos, neighbourPos)
+					|| level.getBlockState(neighbourPos).getBlock() == state.getBlock();
+				if (connected)
 					mask |= 1 << direction.get3DDataValue();
+			}
 			return mask;
 		}
 	}

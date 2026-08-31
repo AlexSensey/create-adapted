@@ -5,7 +5,9 @@ import java.util.ArrayList;
 import dev.engine_room.flywheel.api.backend.Backend;
 import dev.engine_room.flywheel.impl.visualization.VisualizationManagerImpl;
 import dev.engine_room.flywheel.lib.backend.SimpleBackend;
+import dev.engine_room.flywheel.lib.util.RendererReloadCache;
 import dev.engine_room.flywheel.lib.util.ResourceUtil;
+import dev.engine_room.flywheel.lib.util.ResourceReloadHolder;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.resources.Identifier;
 
@@ -90,6 +92,13 @@ public final class BackendManagerImpl {
 			return;
 		}
 
+		// A visual owns models created from both of these caches. Invalidate them
+		// before recreating visualization managers, otherwise a language/resource
+		// reload can build the new visuals from stale models and then discard those
+		// models immediately afterwards. Keep this sequence in one listener so its
+		// ordering does not depend on NeoForge event-bus listener ordering.
+		RendererReloadCache.onReloadLevelRenderer();
+		ResourceReloadHolder.onEndClientResourceReload();
 		chooseBackend();
 		VisualizationManagerImpl.resetAll();
 	}

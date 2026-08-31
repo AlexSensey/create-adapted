@@ -5,7 +5,6 @@ import java.util.UUID;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.Create;
 import com.simibubi.create.content.contraptions.StructureTransform;
 import com.simibubi.create.content.trains.graph.DimensionPalette;
@@ -18,23 +17,12 @@ import com.simibubi.create.content.trains.graph.TrackGraphLocation;
 import com.simibubi.create.content.trains.graph.TrackNode;
 import com.simibubi.create.content.trains.signal.SingleBlockEntityEdgePoint;
 import com.simibubi.create.content.trains.signal.TrackEdgePoint;
-import com.simibubi.create.foundation.model.CreateStandaloneModels;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BehaviourType;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 
-import dev.engine_room.flywheel.lib.model.baked.PartialModel;
-import dev.engine_room.flywheel.lib.transform.TransformStack;
 import net.createmod.catnip.api.data.Iterate;
 import net.createmod.catnip.api.math.VecHelper;
-import net.createmod.catnip.api.level.wrapper.SchematicLevel;
-import net.createmod.ponder.api.client.level.PonderLevel;
-import net.createmod.catnip.impl.client.render.MultiBufferSource;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.block.BlockModelRenderState;
-import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.core.Direction.AxisDirection;
@@ -49,7 +37,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.model.standalone.StandaloneModelKey;
 
 
 public class TrackTargetingBehaviour<T extends TrackEdgePoint> extends BlockEntityBehaviour {
@@ -328,57 +315,6 @@ public class TrackTargetingBehaviour<T extends TrackEdgePoint> extends BlockEnti
 
 	public static enum RenderedTrackOverlayType {
 		STATION, SIGNAL, DUAL_SIGNAL, OBSERVER;
-	}
-
-	public static void render(LevelAccessor level, BlockPos pos, AxisDirection direction,
-							  BezierTrackPointLocation bezier, PoseStack ms, MultiBufferSource buffer, int light, int overlay,
-							  RenderedTrackOverlayType type, float scale) {
-		if (level instanceof SchematicLevel && !(level instanceof PonderLevel))
-			return;
-
-	}
-
-	public static void submit(LevelAccessor level, BlockPos pos, AxisDirection direction,
-		BezierTrackPointLocation bezier, PoseStack ms, SubmitNodeCollector collector, int light,
-		RenderedTrackOverlayType type, float scale) {
-		if (level instanceof SchematicLevel && !(level instanceof PonderLevel))
-			return;
-
-		BlockState trackState = level.getBlockState(pos);
-		Block block = trackState.getBlock();
-		if (!(block instanceof ITrackBlock track))
-			return;
-
-		PartialModel overlay = track instanceof TrackBlock trackBlock
-			? trackBlock.prepareTrackOverlay(ms, level, pos, trackState, bezier, direction, type)
-			: track.prepareTrackOverlay(TransformStack.of(ms), level, pos, trackState, bezier, direction, type);
-		if (overlay == null)
-			return;
-
-		StandaloneModelKey<BlockStateModelPart> key = getOverlayModel(type);
-		if (key == null)
-			return;
-
-		BlockStateModelPart part = Minecraft.getInstance()
-			.getModelManager()
-			.getStandaloneModel(key);
-		if (part == null)
-			return;
-
-		ms.translate(.5, 0, .5);
-		ms.scale(scale * (1 + 1 / 16f), scale * (1 + 1 / 16f), scale * (1 + 1 / 16f));
-		ms.translate(-.5, 0, -.5);
-		collector.submitBlockModel(ms, RenderTypes.cutoutMovingBlock(), List.of(part),
-			BlockModelRenderState.EMPTY_TINTS, light, 0, 0);
-	}
-
-	private static StandaloneModelKey<BlockStateModelPart> getOverlayModel(RenderedTrackOverlayType type) {
-		return switch (type) {
-			case DUAL_SIGNAL -> CreateStandaloneModels.TRACK_SIGNAL_DUAL_OVERLAY;
-			case OBSERVER -> CreateStandaloneModels.TRACK_OBSERVER_OVERLAY;
-			case SIGNAL -> CreateStandaloneModels.TRACK_SIGNAL_OVERLAY;
-			case STATION -> CreateStandaloneModels.TRACK_STATION_OVERLAY;
-		};
 	}
 
 	private static CompoundTag writeBlockPos(BlockPos pos) {

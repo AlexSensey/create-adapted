@@ -13,7 +13,7 @@ import com.simibubi.create.content.kinetics.crafter.MechanicalCrafterBlockEntity
 import com.simibubi.create.content.kinetics.crafter.RecipeGridHandler.GroupedItems;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.createmod.catnip.api.client.animation.AnimationTickHolder;
 import net.createmod.catnip.api.math.AngleHelper;
@@ -191,7 +191,7 @@ public class MechanicalCrafterRenderer extends KineticBlockEntityRenderer<Mechan
 
 		List<BlockStateModelPart> cogwheel = getModel(CreateStandaloneModels.SHAFTLESS_COGWHEEL, cogwheelModel);
 		cogwheelModel = cogwheel;
-		if (!VisualizationManager.supportsVisualization(be.getLevel()) && !cogwheel.isEmpty()) {
+		if (!CreateVisualizationManager.supportsVisualization(be.getLevel()) && !cogwheel.isEmpty()) {
 			ms.pushPose();
 			transformRotatingModel(be, ms, partialTicks);
 			if (blockState.getValue(HORIZONTAL_FACING)

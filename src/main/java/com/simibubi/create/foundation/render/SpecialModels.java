@@ -4,6 +4,7 @@ import dev.engine_room.flywheel.api.material.CardinalLightingMode;
 import dev.engine_room.flywheel.api.material.LightShader;
 import dev.engine_room.flywheel.api.model.Model;
 import dev.engine_room.flywheel.lib.material.LightShaders;
+import dev.engine_room.flywheel.lib.material.CutoutShaders;
 import dev.engine_room.flywheel.lib.material.SimpleMaterial;
 import dev.engine_room.flywheel.lib.model.ModelUtil;
 import dev.engine_room.flywheel.lib.model.baked.BakedModelBuilder;
@@ -47,6 +48,20 @@ public class SpecialModels {
 					.build();
 			})
 			.build());
+	private static final RendererReloadCache<PartialModel, Model> FLAT_CHUNK_MIPPED =
+		new RendererReloadCache<>(partial -> new BakedModelBuilder(partial.get())
+			.materialFunc((renderType, shaded, ao) -> {
+				var material = ModelUtil.getMaterial(renderType, shaded, ao);
+				if (material == null)
+					return null;
+				return SimpleMaterial.builderOf(material)
+					.light(LightShaders.FLAT)
+					.cardinalLightingMode(shaded ? CardinalLightingMode.CHUNK : CardinalLightingMode.OFF)
+					.cutout(CutoutShaders.HALF)
+					.mipmap(true)
+					.build();
+			})
+			.build());
 
 	public static Model flatLit(PartialModel partial) {
 		return FLAT.get(new Key(partial, LightShaders.FLAT, CardinalLightingMode.ENTITY));
@@ -58,6 +73,10 @@ public class SpecialModels {
 
 	public static Model flatChunk(PartialModel partial) {
 		return FLAT.get(new Key(partial, LightShaders.FLAT, CardinalLightingMode.CHUNK));
+	}
+
+	public static Model flatChunkMipped(PartialModel partial) {
+		return FLAT_CHUNK_MIPPED.get(partial);
 	}
 
 	public static Model chunkDiffuse(PartialModel partial) {

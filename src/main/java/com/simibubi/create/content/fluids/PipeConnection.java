@@ -13,7 +13,6 @@ import net.createmod.catnip.api.data.Iterate;
 import net.createmod.catnip.api.math.BlockFace;
 import net.createmod.catnip.api.math.VecHelper;
 import net.createmod.catnip.platform.CatnipServices;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -380,9 +379,8 @@ public class PipeConnection {
 	}
 
 	private void spawnParticlesInner(Level level, BlockPos pos, FluidStack fluid) {
-		if (level == Minecraft.getInstance().level)
-			if (!isRenderEntityWithinDistance(pos))
-				return;
+		if (!isRenderEntityWithinDistance(level, pos))
+			return;
 		if (hasOpenEnd())
 			spawnPouringLiquid(level, pos, fluid, 1);
 		else if (level.getRandom().nextFloat() < IDLE_PARTICLE_SPAWN_CHANCE)
@@ -390,9 +388,8 @@ public class PipeConnection {
 	}
 
 	private void spawnSplashOnRimInner(Level world, BlockPos pos, FluidStack fluid) {
-		if (world == Minecraft.getInstance().level)
-			if (!isRenderEntityWithinDistance(pos))
-				return;
+		if (!isRenderEntityWithinDistance(world, pos))
+			return;
 		spawnRimParticles(world, pos, fluid, SPLASH_PARTICLE_AMOUNT);
 	}
 
@@ -415,16 +412,9 @@ public class PipeConnection {
 		FluidFX.spawnPouringLiquid(world, pos, amount, particle, RIM_RADIUS, directionVec, flow.inbound);
 	}
 
-	public static boolean isRenderEntityWithinDistance(BlockPos pos) {
-		Entity renderViewEntity = Minecraft.getInstance()
-			.getCameraEntity();
-		if (renderViewEntity == null)
-			return false;
+	public static boolean isRenderEntityWithinDistance(Level level, BlockPos pos) {
 		Vec3 center = VecHelper.getCenterOf(pos);
-		if (renderViewEntity.position()
-			.distanceTo(center) > MAX_PARTICLE_RENDER_DISTANCE)
-			return false;
-		return true;
+		return level.getNearestPlayer(center.x, center.y, center.z, MAX_PARTICLE_RENDER_DISTANCE, false) != null;
 	}
 
 //	void visualizePressure(BlockPos pos) {

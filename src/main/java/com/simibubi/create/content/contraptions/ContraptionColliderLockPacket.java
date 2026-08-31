@@ -21,7 +21,8 @@ public record ContraptionColliderLockPacket(int contraption, double offset, int 
 
 	@Override
 	public void handle(Player player) {
-		ContraptionCollider.lockPacketReceived(contraption, sender, offset);
+		CatnipServices.PLATFORM.executeOnClientOnly(() -> () ->
+			ContraptionColliderClient.lockPacketReceived(contraption, sender, offset));
 	}
 
 	@Override

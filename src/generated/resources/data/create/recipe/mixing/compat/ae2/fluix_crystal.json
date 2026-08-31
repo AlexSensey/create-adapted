@@ -8,12 +8,7 @@
   "type": "create:mixing",
   "ingredients": [
     "#c:dusts/redstone",
-    {
-      "type": "neoforge:compound",
-      "ingredients": [
-        "ae2:charged_certus_quartz_crystal"
-      ]
-    },
+    "ae2:charged_certus_quartz_crystal",
     "#c:gems/quartz",
     {
       "ingredient": "minecraft:water",

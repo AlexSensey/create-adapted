@@ -13,17 +13,12 @@ import com.simibubi.create.content.kinetics.belt.item.BeltConnectorItem;
 import com.simibubi.create.content.kinetics.belt.transport.BeltInventory;
 import com.simibubi.create.content.kinetics.belt.transport.TransportedItemStack;
 import com.simibubi.create.foundation.block.ProperWaterloggedBlock;
-import com.simibubi.create.foundation.utility.CreateLang;
 
 import net.createmod.catnip.api.math.VecHelper;
-import net.createmod.catnip.api.client.outliner.Outliner;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
-import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
@@ -39,7 +34,6 @@ import net.minecraft.world.level.block.LevelEvent;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 
@@ -458,45 +452,6 @@ public class BeltSlicer {
 			.subtract(centerOf);
 
 		return subtract.dot(beltVector) > 0 == (part == BeltPart.END);
-	}
-
-	public static void tickHoveringInformation() {
-		Minecraft mc = Minecraft.getInstance();
-		HitResult target = mc.hitResult;
-		if (target == null || !(target instanceof BlockHitResult result))
-			return;
-
-		ClientLevel world = mc.level;
-		BlockPos pos = result.getBlockPos();
-		BlockState state = world.getBlockState(pos);
-		ItemStack held = mc.player.getItemInHand(InteractionHand.MAIN_HAND);
-		ItemStack heldOffHand = mc.player.getItemInHand(InteractionHand.OFF_HAND);
-
-		if (mc.player.isShiftKeyDown())
-			return;
-		if (!AllBlocks.BELT.has(state))
-			return;
-
-		Feedback feedback = new Feedback();
-
-		// TODO: Populate feedback in the methods for clientside
-		if (AllItems.WRENCH.isIn(held) || AllItems.WRENCH.isIn(heldOffHand))
-			useWrench(state, world, pos, mc.player, InteractionHand.MAIN_HAND, result, feedback);
-		else if (AllItems.BELT_CONNECTOR.isIn(held) || AllItems.BELT_CONNECTOR.isIn(heldOffHand))
-			useConnector(state, world, pos, mc.player, InteractionHand.MAIN_HAND, result, feedback);
-		else
-			return;
-
-		if (feedback.langKey != null)
-			mc.player.sendOverlayMessage(CreateLang.translateDirect(feedback.langKey)
-				.withStyle(feedback.formatting));
-		else
-			mc.player.sendOverlayMessage(CommonComponents.EMPTY);
-
-		if (feedback.bb != null)
-			Outliner.getInstance().chaseAABB("BeltSlicer", feedback.bb)
-				.lineWidth(1 / 16f)
-				.colored(feedback.color);
 	}
 
 }

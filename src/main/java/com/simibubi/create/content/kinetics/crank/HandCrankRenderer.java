@@ -9,7 +9,7 @@ import com.simibubi.create.content.kinetics.base.KineticBlockEntityRenderer;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueLabelRenderer;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
 import net.minecraft.client.Minecraft;
@@ -46,14 +46,16 @@ public class HandCrankRenderer extends KineticBlockEntityRenderer<HandCrankBlock
 			return;
 
 		if (be instanceof ValveHandleBlockEntity valveHandle) {
-			if (!VisualizationManager.supportsVisualization(be.getLevel()))
+			if (!CreateVisualizationManager.supportsVisualization(be.getLevel()))
 				submitHandle(state, kineticState, ms, collector, valveHandle);
 			ScrollValueLabelRenderer.submitValveHandle(valveHandle, state, ms, collector, cameraRenderState);
 			return;
 		}
 
-		if (!VisualizationManager.supportsVisualization(be.getLevel()))
+		if (!CreateVisualizationManager.supportsVisualization(be.getLevel())) {
+			super.submit(state, ms, collector, cameraRenderState);
 			submitHandle(state, kineticState, ms, collector, be);
+		}
 	}
 
 	private void submitHandle(BlockEntityRenderState state, KineticRenderState kineticState, PoseStack ms,

@@ -259,9 +259,9 @@ public class AllFluids {
 			};
 		}
 
-		private SolidRenderedPlaceableFluidType(Properties properties, ResourceLocation stillTexture,
-												ResourceLocation flowingTexture) {
-			super(properties, stillTexture, flowingTexture);
+		private SolidRenderedPlaceableFluidType(Properties properties, Identifier stillTexture,
+												Identifier flowingTexture) {
+			super(properties, ResourceLocation.fromIdentifier(stillTexture), ResourceLocation.fromIdentifier(flowingTexture));
 		}
 
 		@Override

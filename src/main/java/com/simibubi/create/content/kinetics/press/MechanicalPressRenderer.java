@@ -8,7 +8,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntityRenderer;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
 import net.minecraft.client.Minecraft;
@@ -31,7 +31,8 @@ public class MechanicalPressRenderer extends KineticBlockEntityRenderer<Mechanic
 		super(context);
 	}
 
-	public boolean shouldRenderOffScreen(MechanicalPressBlockEntity be) {
+	@Override
+	public boolean shouldRenderOffScreen() {
 		return true;
 	}
 
@@ -49,7 +50,7 @@ public class MechanicalPressRenderer extends KineticBlockEntityRenderer<Mechanic
 		MechanicalPressBlockEntity be = pressState.blockEntity;
 		if (be == null || isInvalid(be))
 			return;
-		if (VisualizationManager.supportsVisualization(be.getLevel()))
+		if (CreateVisualizationManager.supportsVisualization(be.getLevel()))
 			return;
 
 		BlockState blockState = be.getBlockState();

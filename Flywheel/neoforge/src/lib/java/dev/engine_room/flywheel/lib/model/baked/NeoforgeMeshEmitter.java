@@ -5,6 +5,7 @@ import org.jetbrains.annotations.ApiStatus;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.QuadInstance;
+import org.joml.Vector3f;
 
 import dev.engine_room.flywheel.api.material.Material;
 import net.minecraft.client.Minecraft;
@@ -13,6 +14,7 @@ import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.client.model.quad.BakedNormals;
 
 /** Bridges Minecraft 26.2's extracted baked quads into Flywheel block meshes. */
 @ApiStatus.Internal
@@ -46,6 +48,14 @@ public class NeoforgeMeshEmitter extends MeshEmitter {
 		}
 		instance.setColor(color);
 
-		getBuffer(material).putBakedQuad(pose, quad, instance);
+		BufferBuilder buffer = getBuffer(material);
+		buffer.putBakedQuad(pose, quad, instance);
+		for (int vertex = 0; vertex < 4; vertex++) {
+			int packed = quad.bakedNormals().normal(vertex);
+			Vector3f normal = BakedNormals.isUnspecified(packed)
+				? new Vector3f(quad.direction().getUnitVec3f())
+				: BakedNormals.unpack(packed, new Vector3f());
+			recordVertexNormal(buffer, pose.transformNormal(normal, normal));
+		}
 	}
 }

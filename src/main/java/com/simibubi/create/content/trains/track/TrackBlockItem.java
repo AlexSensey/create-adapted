@@ -14,7 +14,6 @@ import com.simibubi.create.foundation.utility.CreateLang;
 import net.createmod.catnip.api.data.Pair;
 import net.createmod.catnip.api.client.network.ClientNetworkHelper;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction.AxisDirection;
 import net.minecraft.sounds.SoundEvents;
@@ -33,12 +32,6 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-
-@EventBusSubscriber(Dist.CLIENT)
 public class TrackBlockItem extends BlockItem {
 	private static final Map<UUID, TrackPlacement.ConnectingFrom> SERVER_SELECTIONS = new ConcurrentHashMap<>();
 
@@ -182,26 +175,6 @@ public class TrackBlockItem extends BlockItem {
 		TrackPlacement.ConnectingFrom selection = stack.get(AllDataComponents.TRACK_CONNECTING_FROM);
 		if (selection != null)
 			SERVER_SELECTIONS.put(player.getUUID(), selection);
-	}
-
-	@SubscribeEvent
-	public static void rightClickingTrackSelectsStart(PlayerInteractEvent.RightClickBlock event) {
-		// TrackBlock now passes track items through to BlockItem.useOn(), matching the
-		// old placement flow. Do not cancel here or the server never sees the first
-		// click that stores TRACK_CONNECTING_FROM on the held stack.
-	}
-
-	@SubscribeEvent
-	public static void sendExtenderPacket(PlayerInteractEvent.RightClickBlock event) {
-		ItemStack stack = event.getItemStack();
-		if (!event.getLevel()
-			.isClientSide())
-			return;
-		if (!AllTags.AllBlockTags.TRACKS.matches(stack))
-			return;
-		if (Minecraft.getInstance().options.keySprint.isDown())
-			ClientNetworkHelper.INSTANCE.sendToServer(
-				new PlaceExtendedCurvePacket(event.getHand() == InteractionHand.MAIN_HAND, true));
 	}
 
 	@Override

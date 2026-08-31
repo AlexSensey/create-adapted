@@ -13,7 +13,6 @@ import com.simibubi.create.foundation.blockEntity.behaviour.filtering.SidedFilte
 import com.simibubi.create.foundation.blockEntity.renderer.SmartBlockEntityRenderer;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
 import com.simibubi.create.foundation.render.FlatGuiItemRenderer;
 
 import net.createmod.catnip.api.math.AngleHelper;
@@ -194,9 +193,6 @@ public class BeltTunnelRenderer extends SmartBlockEntityRenderer<BeltTunnelBlock
 
 		renderFilters(be, ms, collector, state.lightCoords);
 		renderTunnelMode(be, ms, collector);
-		if (VisualizationManager.supportsVisualization(be.getLevel()))
-			return;
-
 		List<BlockStateModelPart> flap = getFlapModel();
 		if (flap.isEmpty())
 			return;

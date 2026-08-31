@@ -343,6 +343,13 @@ public class FactoryPanelBlock extends FaceAttachedHorizontalDirectionalBlock
 		IBE.onRemove(pState, pLevel, pPos, pNewState);
 	}
 
+	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+										   BlockPos pos, boolean isMoving) {
+		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
+	}
+
 	public static PanelSlot getTargetedSlot(BlockPos pos, BlockState blockState, Vec3 clickLocation) {
 		double bestDistance = Double.MAX_VALUE;
 		PanelSlot bestSlot = PanelSlot.BOTTOM_LEFT;

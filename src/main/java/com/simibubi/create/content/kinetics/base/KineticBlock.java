@@ -47,6 +47,15 @@ public abstract class KineticBlock extends Block implements IRotate {
 	}
 
 	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+										   BlockPos pos, boolean isMoving) {
+		// Minecraft 26.2 replaced the old onRemove callback with this method.
+		// Keep virtual dispatch so specialized kinetic blocks retain their cleanup.
+		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
+	}
+
+	@Override
 	public boolean hasShaftTowards(LevelReader world, BlockPos pos, BlockState state, Direction face) {
 		return false;
 	}

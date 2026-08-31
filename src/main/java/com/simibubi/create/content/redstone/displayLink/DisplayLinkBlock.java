@@ -67,6 +67,13 @@ public class DisplayLinkBlock extends WrenchableDirectionalBlock implements IBE<
 		IBE.onRemove(pState, pLevel, pPos, pNewState);
 	}
 
+	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+										   BlockPos pos, boolean isMoving) {
+		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
+	}
+
 	public static void notifyGatherers(LevelAccessor level, BlockPos pos) {
 		forEachAttachedGatherer(level, pos, DisplayLinkBlockEntity::tickSource);
 	}

@@ -13,7 +13,6 @@ import com.simibubi.create.foundation.utility.ServerSpeedProvider;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.createmod.catnip.api.math.VecHelper;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -261,13 +260,10 @@ public class GantryContraptionEntity extends AbstractContraptionEntity {
 				new GantryContraptionUpdatePacket(getId(), getAxisCoord(), axisMotion, sequencedOffsetLimit));
 	}
 
-	public static void handlePacket(GantryContraptionUpdatePacket packet) {
-		Entity entity = Minecraft.getInstance().level.getEntity(packet.entityID());
-		if (!(entity instanceof GantryContraptionEntity ce))
-			return;
-		ce.axisMotion = packet.motion();
-		ce.clientOffsetDiff = ce.clientOffsetSyncGraceTicks > 0 ? 0 : packet.coord() - ce.getAxisCoord();
-		ce.sequencedOffsetLimit = packet.sequenceLimit();
+	void applyClientUpdate(GantryContraptionUpdatePacket packet) {
+		axisMotion = packet.motion();
+		clientOffsetDiff = clientOffsetSyncGraceTicks > 0 ? 0 : packet.coord() - getAxisCoord();
+		sequencedOffsetLimit = packet.sequenceLimit();
 	}
 
 }

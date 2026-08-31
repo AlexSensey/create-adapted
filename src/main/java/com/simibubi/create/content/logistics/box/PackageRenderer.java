@@ -3,6 +3,7 @@ package com.simibubi.create.content.logistics.box;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 import dev.engine_room.flywheel.lib.model.baked.PartialModel;
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
 import net.minecraft.client.Minecraft;
@@ -44,6 +45,8 @@ public class PackageRenderer extends EntityRenderer<PackageEntity, PackageRender
 	public void submit(PackageRenderState state, PoseStack ms, SubmitNodeCollector collector,
 		CameraRenderState cameraRenderState) {
 		if (state.box.isEmpty() || state.entity == null)
+			return;
+		if (CreateVisualizationManager.supportsVisualization(state.entity.level()))
 			return;
 
 		ms.pushPose();

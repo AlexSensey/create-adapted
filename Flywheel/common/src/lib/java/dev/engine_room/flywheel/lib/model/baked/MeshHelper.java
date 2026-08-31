@@ -1,9 +1,11 @@
 package dev.engine_room.flywheel.lib.model.baked;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.system.MemoryUtil;
+import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.MeshData;
 
@@ -16,7 +18,8 @@ final class MeshHelper {
 	private MeshHelper() {
 	}
 
-	public static SimpleQuadMesh blockVerticesToMesh(MeshData data, @Nullable String meshDescriptor) {
+	public static SimpleQuadMesh blockVerticesToMesh(MeshData data, @Nullable String meshDescriptor,
+		@Nullable List<Vector3f> vertexNormals) {
 		MeshData.DrawState drawState = data.drawState();
 		int vertexCount = drawState.vertexCount();
 		long srcStride = drawState.format().getVertexSize();
@@ -45,10 +48,22 @@ final class MeshHelper {
 		vertexView.nativeMemoryOwner(dst);
 
 		if (srcStride < NoOverlayVertexView.STRIDE) {
-			reconstructQuadNormals(vertexView, vertexCount);
+			if (vertexNormals != null && vertexNormals.size() == vertexCount)
+				applyBakedVertexNormals(vertexView, vertexNormals);
+			else
+				reconstructQuadNormals(vertexView, vertexCount);
 		}
 
 		return new SimpleQuadMesh(vertexView, meshDescriptor);
+	}
+
+	private static void applyBakedVertexNormals(VertexView vertices, List<Vector3f> vertexNormals) {
+		for (int vertex = 0; vertex < vertexNormals.size(); vertex++) {
+			Vector3f normal = vertexNormals.get(vertex);
+			vertices.normalX(vertex, normal.x());
+			vertices.normalY(vertex, normal.y());
+			vertices.normalZ(vertex, normal.z());
+		}
 	}
 
 	private static void reconstructQuadNormals(VertexView vertices, int vertexCount) {

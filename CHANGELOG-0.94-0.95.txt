@@ -1,0 +1,15 @@
+Create: Adapted 0.95 — changes since 0.94
+
+- Restored all three Create processing recipes supplied for Applied Energistics 2:
+  - milling Sky Stone into Sky Dust;
+  - milling Fluix Crystal into Fluix Dust;
+  - mixing Redstone Dust, Charged Certus Quartz Crystal, Quartz and 250 mB of water into two Fluix Crystals.
+- Migrated those recipe ingredients away from the obsolete NeoForge compound format so they load on Minecraft 26.2.
+
+Українською:
+
+- Відновлено всі три рецепти обробки Create для Applied Energistics 2:
+  - подрібнення небесного каменю на небесний пил;
+  - подрібнення флюїксового кристала на флюїксовий пил;
+  - змішування редстоунового пилу, зарядженого кристала істинного кварцу, кварцу та 250 mB води у два флюїксові кристали.
+- Інгредієнти цих рецептів переведено зі застарілого складеного формату NeoForge на формат Minecraft 26.2.

@@ -4,39 +4,39 @@ import java.util.List;
 import java.util.Map.Entry;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.QuadInstance;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
+import com.simibubi.create.Create;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntityRenderer;
 import com.simibubi.create.content.kinetics.chainConveyor.ChainConveyorBlockEntity.ConnectionStats;
 import com.simibubi.create.content.kinetics.chainConveyor.ChainConveyorPackage.ChainConveyorPackagePhysicsData;
 import com.simibubi.create.content.logistics.box.PackageItem;
 import com.simibubi.create.foundation.model.CreateStandaloneModels;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 
 import net.createmod.catnip.api.client.animation.AnimationTickHolder;
 import net.createmod.catnip.api.math.AngleHelper;
 import net.createmod.catnip.api.client.render.SuperByteBuffer;
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.BlockModelRenderState;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider.Context;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.item.ItemModel;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.client.renderer.texture.TextureAtlas;
-import net.minecraft.client.resources.model.geometry.BakedQuad;
-import net.minecraft.client.resources.model.geometry.QuadCollection;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
@@ -72,8 +72,12 @@ public class ChainConveyorRenderer extends KineticBlockEntityRenderer<ChainConve
 			return;
 
 		renderChains(be, ms, collector);
-		if (VisualizationManager.supportsVisualization(be.getLevel()))
+		if (CreateVisualizationManager.supportsVisualization(be.getLevel())) {
+			// Package models use the item atlas and cannot be instanced as block partials on 26.2.
+			// Keep them on the compatibility path while Flywheel renders the aligned shaft and wheel.
+			renderPackages(be, kineticState.partialTicks, ms, collector);
 			return;
+		}
 		renderWheel(ms, collector, state.lightCoords);
 		renderPackages(be, kineticState.partialTicks, ms, collector);
 	}
@@ -112,26 +116,29 @@ public class ChainConveyorRenderer extends KineticBlockEntityRenderer<ChainConve
 			-25, 25);
 
 		int light = getLight(be.getLevel(), BlockPos.containing(position));
-		Identifier itemId = BuiltInRegistries.ITEM.getKey(box.item.getItem());
-		QuadCollection boxQuads = getPackageQuads(CreateStandaloneModels.PACKAGE_QUADS.get(itemId));
-		QuadCollection riggingQuads = getPackageQuads(CreateStandaloneModels.PACKAGE_RIGGING_QUADS.get(itemId));
-		if (boxQuads == null || riggingQuads == null)
+		Minecraft minecraft = Minecraft.getInstance();
+		ClientLevel level = minecraft.level;
+		if (level == null)
 			return;
 
-		renderPackageQuads(ms, collector, boxQuads, localTarget, yaw, zRot, xRot, false, light, box);
-		renderPackageQuads(ms, collector, riggingQuads, localTarget, yaw, zRot, xRot, physicsData.flipped, light, box);
+		ItemStackRenderState boxState = new ItemStackRenderState();
+		minecraft.getItemModelResolver()
+			.updateForTopItem(boxState, box.item, ItemDisplayContext.FIXED, level, null, 0);
+
+		int width = Math.round(PackageItem.getWidth(box.item) * 16);
+		int height = Math.round(PackageItem.getHeight(box.item) * 16);
+		Identifier riggingId = Create.asResource("chain_package_rigging/" + width + "x" + height);
+		ItemModel riggingModel = minecraft.getModelManager()
+			.getItemModel(riggingId);
+		ItemStackRenderState riggingState = new ItemStackRenderState();
+		riggingModel.update(riggingState, box.item, minecraft.getItemModelResolver(), ItemDisplayContext.FIXED, level,
+			null, 0);
+
+		renderPackageState(ms, collector, riggingState, localTarget, yaw, zRot, xRot, physicsData.flipped, light, box);
+		renderPackageState(ms, collector, boxState, localTarget, yaw, zRot, xRot, false, light, box);
 	}
 
-	private static QuadCollection getPackageQuads(
-		net.neoforged.neoforge.client.model.standalone.StandaloneModelKey<QuadCollection> key) {
-		if (key == null)
-			return null;
-		return Minecraft.getInstance()
-			.getModelManager()
-			.getStandaloneModel(key);
-	}
-
-	private static void renderPackageQuads(PoseStack ms, SubmitNodeCollector collector, QuadCollection quads,
+	private static void renderPackageState(PoseStack ms, SubmitNodeCollector collector, ItemStackRenderState itemState,
 		Vec3 localTarget, float yaw, float zRot, float xRot, boolean flipped, int light, ChainConveyorPackage box) {
 		ms.pushPose();
 		ms.translate(localTarget.x, localTarget.y, localTarget.z);
@@ -141,16 +148,12 @@ public class ChainConveyorRenderer extends KineticBlockEntityRenderer<ChainConve
 		ms.mulPose(Axis.XP.rotationDegrees(xRot));
 		if (flipped)
 			ms.mulPose(Axis.YP.rotationDegrees(180));
-		ms.translate(-.5, -.5, -.5);
 		ms.translate(0, -PackageItem.getHookDistance(box.item) + 7 / 16f, 0);
-		collector.submitCustomGeometry(ms, RenderTypes.itemCutout(TextureAtlas.LOCATION_ITEMS), (pose, consumer) -> {
-			QuadInstance quadInstance = new QuadInstance();
-			quadInstance.setColor(0xFFFFFFFF);
-			quadInstance.setLightCoords(light);
-			quadInstance.setOverlayCoords(OverlayTexture.NO_OVERLAY);
-			for (BakedQuad quad : quads.getAll())
-				consumer.putBakedQuad(pose, quad, quadInstance);
-		});
+		// The 26.2 item-model pipeline uses a different effective suspension origin
+		// than Create's original partial-model path. Each rigging model extends its
+		// hook 2 pixels past the style offset, so 6 pixels puts its tip on the chain.
+		ms.translate(0, 6 / 16f, 0);
+		itemState.submit(ms, collector, light, OverlayTexture.NO_OVERLAY, 0);
 		ms.popPose();
 	}
 
@@ -204,7 +207,7 @@ public class ChainConveyorRenderer extends KineticBlockEntityRenderer<ChainConve
 					.closerThan(Vec3.atCenterOf(tilePos)
 						.add(connection.getX() / 2f, connection.getY() / 2f, connection.getZ() / 2f), MIP_DISTANCE);
 
-			if (!VisualizationManager.supportsVisualization(be.getLevel())) {
+			if (!CreateVisualizationManager.supportsVisualization(be.getLevel())) {
 				renderConnectionGuard(ms, collector, (float) yaw, light1);
 				renderConnectionGuard(ms, collector, connection, (float) yaw + 180, light2);
 			}
@@ -460,7 +463,8 @@ public class ChainConveyorRenderer extends KineticBlockEntityRenderer<ChainConve
 		return 256;
 	}
 
-	public boolean shouldRenderOffScreen(ChainConveyorBlockEntity be) {
+	@Override
+	public boolean shouldRenderOffScreen() {
 		return true;
 	}
 

@@ -1,9 +1,7 @@
 package com.simibubi.create.content.equipment.potatoCannon;
 
 import com.simibubi.create.AllPackets;
-import com.simibubi.create.CreateClient;
 import com.simibubi.create.content.equipment.zapper.ShootGadgetPacket;
-import com.simibubi.create.content.equipment.zapper.ShootableGadgetRenderHandler;
 
 import net.createmod.catnip.api.data.codec.stream.CatnipStreamCodecs;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -35,14 +33,16 @@ public class PotatoCannonPacket extends ShootGadgetPacket {
 		this.pitch = pitch;
 	}
 
-	@Override
-	protected void handleAdditional() {
-		CreateClient.POTATO_CANNON_RENDER_HANDLER.beforeShoot(pitch, location, motion, item);
+	public float pitch() {
+		return pitch;
 	}
 
-	@Override
-	protected ShootableGadgetRenderHandler getHandler() {
-		return CreateClient.POTATO_CANNON_RENDER_HANDLER;
+	public Vec3 motion() {
+		return motion;
+	}
+
+	public ItemStack item() {
+		return item;
 	}
 
 	@Override

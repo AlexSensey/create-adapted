@@ -2,7 +2,7 @@ package com.simibubi.create.foundation.blockEntity.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 
-import dev.engine_room.flywheel.api.visualization.VisualizationManager;
+import com.simibubi.create.foundation.render.CreateVisualizationManager;
 import net.createmod.catnip.api.client.render.SuperByteBuffer;
 import net.createmod.catnip.impl.client.render.MultiBufferSource;
 import net.minecraft.client.renderer.rendertype.RenderType;

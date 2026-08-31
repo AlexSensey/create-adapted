@@ -11,7 +11,6 @@ import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 
 import net.createmod.catnip.platform.CatnipServices;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponentMap;
@@ -87,26 +86,8 @@ public class ClipboardBlockEntity extends SmartBlockEntity {
 					registries.createSerializationContext(NbtOps.INSTANCE))
 				.ifPresent(this::setComponents);
 
-			CatnipServices.PLATFORM.executeOnClientOnly(() -> () -> readClientSide(tag));
+			CatnipServices.PLATFORM.executeOnClientOnly(() -> () -> ClipboardClient.readUpdate(this, tag));
 		}
-	}
-
-	private void readClientSide(CompoundTag tag) {
-		Minecraft mc = Minecraft.getInstance();
-		if (!(mc.gui.screen() instanceof ClipboardScreen clipboardScreen) || mc.player == null)
-			return;
-		String editor = tag.getStringOr("LastEdit", "");
-		if (!editor.isBlank()) {
-			try {
-				if (UUID.fromString(editor).equals(mc.player.getUUID()))
-					return;
-			} catch (IllegalArgumentException ignored) {
-			}
-		}
-		if (!worldPosition.equals(clipboardScreen.targetedBlock))
-			return;
-		clipboardScreen.reopenWith(
-			components().getOrDefault(AllDataComponents.CLIPBOARD_CONTENT, ClipboardContent.EMPTY));
 	}
 
 	private void advertiseToAddressHelper() {

@@ -9,12 +9,9 @@ import com.simibubi.create.infrastructure.debugInfo.element.DebugInfoSection;
 
 import io.netty.buffer.ByteBuf;
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
-import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DyeColor;
 
 public record ServerDebugInfoPacket(String serverInfo) implements ClientboundPacketPayload {
@@ -28,16 +25,7 @@ public record ServerDebugInfoPacket(String serverInfo) implements ClientboundPac
 
 	@Override
 	public void handle(Player player) {
-		StringBuilder output = new StringBuilder();
-		List<DebugInfoSection> clientInfo = DebugInformation.getClientInfo();
-
-		printInfo("Client", player, clientInfo, output);
-		output.append("\n\n");
-		output.append(this.serverInfo);
-
-		String text = output.toString();
-		Minecraft.getInstance().keyboardHandler.setClipboard(text);
-		player.sendSystemMessage(Component.translatable("command.debuginfo.saved_to_clipboard"));
+		DebugInformationClient.handle(this, player);
 	}
 
 	@Override
@@ -52,7 +40,7 @@ public record ServerDebugInfoPacket(String serverInfo) implements ClientboundPac
 		return output.toString();
 	}
 
-	private static void printInfo(String side, Player player, List<DebugInfoSection> sections, StringBuilder output) {
+	static void printInfo(String side, Player player, List<DebugInfoSection> sections, StringBuilder output) {
 		output.append("<details>");
 		output.append('\n');
 		output.append("<summary>")

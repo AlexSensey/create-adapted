@@ -16,7 +16,6 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Util;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.block.Block;
@@ -32,11 +31,8 @@ public class Registrate26Compat {
 		return Util.makeDescriptionId(type, id);
 	}
 
-	public static String makeDescriptionIdLegacy(String type, ResourceLocation id) {
-		// Keep this implementation valid after the production ResourceLocation ->
-		// Identifier remap. Both types expose namespace/path, while Identifier does
-		// not have the compatibility-only asIdentifier() method.
-		return type + "." + id.getNamespace() + "." + id.getPath().replace('/', '.');
+	public static String makeDescriptionIdLegacy(String type, Identifier id) {
+		return Util.makeDescriptionId(type, id);
 	}
 
 	public static ResourceKey<EntityType<?>> entityTypeKey(AbstractBuilder builder, String id) {

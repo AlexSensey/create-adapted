@@ -15,7 +15,6 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class NeoForgeFlwConfig implements FlwConfig {
 	public static final NeoForgeFlwConfig INSTANCE = new NeoForgeFlwConfig();
-	private static final String CREATE_26_2_DEFAULT_BACKEND = "flywheel:off";
 
 	public final ClientConfig client;
 	private final ModConfigSpec clientSpec;
@@ -87,8 +86,8 @@ public class NeoForgeFlwConfig implements FlwConfig {
 		public final NeoForgeBackendConfig backendConfig;
 
 		private ClientConfig(ModConfigSpec.Builder builder) {
-			backend = builder.comment("Select the backend to use. The Create 26.2 adaptation defaults to the compatibility renderer for correct kinetic rendering. Set to \"DEFAULT\" to let Flywheel decide.")
-					.define("backend", CREATE_26_2_DEFAULT_BACKEND);
+			backend = builder.comment("Select the backend to use. Set to \"DEFAULT\" to let Flywheel decide.")
+					.define("backend", DEFAULT_BACKEND_STR);
 
 			limitUpdates = builder.comment("Enable or disable instance update limiting with distance.")
 					.define("limitUpdates", true);

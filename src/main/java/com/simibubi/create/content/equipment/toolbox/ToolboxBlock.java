@@ -88,6 +88,13 @@ public class ToolboxBlock extends HorizontalDirectionalBlock implements SimpleWa
 			world.removeBlockEntity(pos);
 	}
 
+	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+										   BlockPos pos, boolean isMoving) {
+		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
+	}
+
 	public void attack(BlockState state, Level world, BlockPos pos, Player player) {
 		if (player instanceof FakePlayer)
 			return;

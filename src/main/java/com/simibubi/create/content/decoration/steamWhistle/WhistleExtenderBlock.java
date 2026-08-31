@@ -150,6 +150,13 @@ public class WhistleExtenderBlock extends Block implements IWrenchable {
 	}
 
 	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level,
+										   BlockPos pos, boolean isMoving) {
+		onRemove(state, level, pos, level.getBlockState(pos), isMoving);
+		super.affectNeighborsAfterRemoval(state, level, pos, isMoving);
+	}
+
+	@Override
 	protected void createBlockStateDefinition(Builder<Block, BlockState> pBuilder) {
 		super.createBlockStateDefinition(pBuilder.add(SHAPE, SIZE));
 	}
