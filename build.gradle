@@ -517,6 +517,23 @@ jar {
 	from("EXTERNAL_ASSETS.md")
 }
 
+// Addons compile against legacy compatibility shims that are deliberately not
+// shipped in the Create runtime jar. Keep a stable copy outside classes/java/main,
+// because game run tasks remove those temporary classes after patching Minecraft.
+def downstreamCompatibilityJar = tasks.register("downstreamCompatibilityJar", Jar) {
+    dependsOn(tasks.named("compileJava"))
+    archiveFileName = "create-adapted-compile-compat.jar"
+    destinationDirectory = layout.buildDirectory.dir("libs")
+    from(sourceSets.main.output.classesDirs) {
+        include("net/minecraft/**")
+        include("net/neoforged/**")
+    }
+}
+
+tasks.named("assemble").configure {
+    dependsOn(downstreamCompatibilityJar)
+}
+
 def remapResourceLocationClassReferences = { File jarFile, boolean includeResourceLocations = true ->
     if (!jarFile.exists())
         return

@@ -35,6 +35,7 @@ import com.simibubi.create.foundation.CreateNBTProcessors;
 import com.simibubi.create.foundation.advancement.AllAdvancements;
 import com.simibubi.create.foundation.advancement.AllTriggers;
 import com.simibubi.create.foundation.data.CreateRegistrate;
+import com.simibubi.create.foundation.networking.CreateExactVersionPayload;
 import com.simibubi.create.foundation.data.recipe.RecipeData26;
 import com.simibubi.create.infrastructure.data.CreateDataGen26;
 import com.simibubi.create.foundation.item.ItemDescription;
@@ -215,6 +216,7 @@ public class Create {
 	}
 
 	public static void onCtor(IEventBus modEventBus, ModContainer modContainer) {
+		CreateExactVersionPayload.register(modEventBus, CreateBuildInfo.VERSION);
 		modEventBus.addListener(EventPriority.HIGHEST, CreateDataGen26::prepareRegistrateData);
 		modEventBus.addListener(RecipeData26::gatherData);
 		modEventBus.addListener(CreateDataGen26::gatherData);

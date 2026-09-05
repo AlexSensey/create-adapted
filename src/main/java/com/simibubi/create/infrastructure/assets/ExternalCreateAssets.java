@@ -24,7 +24,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.Set;
 import java.util.Map.Entry;
 import java.util.function.Consumer;
@@ -62,7 +61,6 @@ public final class ExternalCreateAssets {
    public static final String OFFICIAL_MINECRAFT_VERSION = "1.21.1";
    public static final String TARGET_MINECRAFT_VERSION = "26.2";
    public static final String TESTED_NEOFORGE_VERSION = "26.2.0.59";
-   public static final String DOWNLOAD_URL = "https://www.curseforge.com/minecraft/mc-mods/create/files/all?page=1&pageSize=20&version=1.21.1";
    private static final List<String> REQUIRED_ENTRIES = List.of(
       "assets/create/lang/en_us.json", "assets/create/textures/block/andesite_casing.png", "assets/create/models/block/cogwheel.json"
    );
@@ -185,7 +183,6 @@ public final class ExternalCreateAssets {
 
          try {
             Files.createDirectories(defaultDirectory);
-            writeProviderDescriptor();
             Path configuredLocation = readOrCreateConfiguredLocation(gameDirectory);
             if (configuredLocation != null) {
                directory = directoryFor(configuredLocation, defaultDirectory);
@@ -208,7 +205,12 @@ public final class ExternalCreateAssets {
 
             if (originalJar == null) {
                failure = "Official Create 6.0.10 for Minecraft 1.21.1 was not found.";
-               Create.LOGGER.error("{} Checked locations: {}", failure, searchLocations);
+               Create.LOGGER.error(
+                  "{} Place the official JAR in {} and restart the game. Checked locations: {}",
+                  failure,
+                  defaultDirectory,
+                  searchLocations
+               );
             } else {
                Create.LOGGER.info("Using player-supplied official Create assets from {}", originalJar);
             }
@@ -216,20 +218,6 @@ public final class ExternalCreateAssets {
             failure = "Could not inspect " + directory + ": " + e.getMessage();
             Create.LOGGER.error(failure, e);
          }
-      }
-   }
-
-   private static void writeProviderDescriptor() throws IOException {
-      Path registryDirectory = CreatePaths.CONFIG_DIR.resolve("adapted-external-assets/providers");
-      Files.createDirectories(registryDirectory);
-      Properties properties = new Properties();
-      properties.setProperty("provider_class", ExternalCreateAssets.class.getName());
-      properties.setProperty("display_name", "Create");
-      properties.setProperty("required_artifact", "Official Create " + OFFICIAL_CREATE_VERSION
-         + " for Minecraft " + OFFICIAL_MINECRAFT_VERSION);
-      properties.setProperty("download_url", DOWNLOAD_URL);
-      try (var output = Files.newOutputStream(registryDirectory.resolve("create.properties"))) {
-         properties.store(output, "Registered external assets provider");
       }
    }
 
