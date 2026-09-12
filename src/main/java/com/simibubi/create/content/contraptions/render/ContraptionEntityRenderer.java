@@ -316,7 +316,9 @@ public class ContraptionEntityRenderer<C extends AbstractContraptionEntity>
 				HarvesterRenderer.submitInContraption(context, ms, collector, light);
 			if (!visualized && movementBehaviour instanceof RollerMovementBehaviour)
 				RollerRenderer.submitInContraption(context, ms, collector, light);
-			if (!visualized && movementBehaviour instanceof SawMovementBehaviour)
+			// SawActorVisual owns only the shaft. The blade is submitted here
+			// in both backends; skipping it with Flywheel leaves the saw toothless.
+			if (movementBehaviour instanceof SawMovementBehaviour)
 				SawRenderer.submitInContraption(context, ms, collector, light);
 			ms.popPose();
 		}

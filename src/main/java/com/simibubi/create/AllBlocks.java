@@ -588,7 +588,6 @@ public class AllBlocks {
 	public static final BlockEntry<WaterWheelStructuralBlock> WATER_WHEEL_STRUCTURAL =
 		REGISTRATE.block("water_wheel_structure", WaterWheelStructuralBlock::new)
 			.initialProperties(SharedProperties::wooden)
-			.clientExtension(() -> () -> new WaterWheelStructuralBlock.RenderProperties())
 			.blockstate((c, p) -> {})
 			.properties(p -> p.noOcclusion()
 				.mapColor(MapColor.DIRT))

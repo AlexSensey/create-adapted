@@ -5,9 +5,9 @@ vec4 linearFogFade(vec4 color, float distance, float fogStart, float fogEnd) {
         return vec4(0.0);
     }
 
-    return color * smoothstep(fogEnd, fogStart, distance);
+    return color * (1.0 - (distance - fogStart) / (fogEnd - fogStart));
 }
 
 vec4 flw_fogFilter(vec4 color) {
-    return linearFogFade(color, flw_distance, flw_fogRange.x, flw_fogRange.y);
+    return color * (1.0 - max(_flw_environmentalFogFactor(), _flw_renderDistanceFogFactor()));
 }

@@ -136,6 +136,10 @@ public class BeltRenderer extends KineticBlockEntityRenderer<BeltBlockEntity> {
 		BeltSlope slope = blockState.getValue(BeltBlock.SLOPE);
 		if (!be.isController() || be.beltLength == 0)
 			return;
+		if (slope.isDiagonal()) {
+			renderDiagonalBelt(be, partialTicks, light, ms, collector);
+			return;
+		}
 		if (slope != BeltSlope.HORIZONTAL && !slope.isDiagonal() && slope != BeltSlope.VERTICAL)
 			return;
 
@@ -151,7 +155,7 @@ public class BeltRenderer extends KineticBlockEntityRenderer<BeltBlockEntity> {
 		// use X-facing belt geometry and need the same additional inversion.
 		if (slope == BeltSlope.VERTICAL && facing.getAxis() == Axis.X)
 			speed = -speed;
-		float scroll = speed == 0 ? 0 : -time * speed / 480f;
+		float scroll = BeltScroll.offset(-speed, time, BeltVisual.SCROLL_FACTOR_OTHERWISE);
 
 		float topScroll = scroll;
 		float bottomScroll = scroll + .5f;
@@ -177,6 +181,57 @@ public class BeltRenderer extends KineticBlockEntityRenderer<BeltBlockEntity> {
 				topScroll, bottomScroll, light));
 		if (slope == BeltSlope.VERTICAL)
 			ms.popPose();
+	}
+
+	private static void renderDiagonalBelt(BeltBlockEntity be, float partialTicks, int light, PoseStack ms,
+		SubmitNodeCollector collector) {
+		BlockState state = be.getBlockState();
+		Direction facing = state.getValue(BeltBlock.HORIZONTAL_FACING);
+		boolean upward = state.getValue(BeltBlock.SLOPE) == BeltSlope.UPWARD;
+		float speed = getBeltSpeed(be);
+		if (!upward ^ facing.getAxis() == Axis.X)
+			speed = -speed;
+		float uvScroll = BeltScroll.offset(speed,
+			getRenderTime(be, partialTicks) * facing.getAxisDirection().getStep(), BeltVisual.SCROLL_FACTOR_DIAGONAL);
+		var models = Minecraft.getInstance().getModelManager();
+		for (int segment = 0; segment < be.beltLength; segment++) {
+			boolean start = segment == 0;
+			boolean end = segment == be.beltLength - 1;
+			var key = (upward ? start : end) ? CreateStandaloneModels.BELT_DIAGONAL_START
+				: (upward ? end : start) ? CreateStandaloneModels.BELT_DIAGONAL_END
+				: CreateStandaloneModels.BELT_DIAGONAL_MIDDLE;
+			BlockStateModelPart model = models.getStandaloneModel(key);
+			if (model == null)
+				continue;
+			List<net.minecraft.client.resources.model.geometry.BakedQuad> quads = new ArrayList<>(model.getQuads(null));
+			for (Direction side : Direction.values())
+				quads.addAll(model.getQuads(side));
+			ms.pushPose();
+			ms.translate(segment * facing.getStepX(), segment * (upward ? 1 : -1), segment * facing.getStepZ());
+			ms.translate(.5, .5, .5);
+			ms.mulPose(com.mojang.math.Axis.YP.rotationDegrees(
+				net.createmod.catnip.api.math.AngleHelper.horizontalAngle(facing) + (upward ? 180 : 0)));
+			ms.translate(-.5, -.5, -.5);
+			collector.submitCustomGeometry(ms, com.simibubi.create.foundation.render.RenderTypes.belt(DIAGONAL_BELT_SCROLL_TEXTURE),
+				(pose, consumer) -> {
+					for (var quad : quads) {
+						var sprite = quad.materialInfo().sprite();
+						var edge = new org.joml.Vector3f(quad.position1()).sub(quad.position0());
+						var normal = edge.cross(new org.joml.Vector3f(quad.position2()).sub(quad.position0())).normalize();
+						for (int vertex = 0; vertex < 4; vertex++) {
+							var position = quad.position(vertex);
+							long uv = quad.packedUV(vertex);
+							float u = (Float.intBitsToFloat((int) (uv >>> 32)) - sprite.getU0()) / (sprite.getU1() - sprite.getU0());
+							float v = (Float.intBitsToFloat((int) uv) - sprite.getV0()) / (sprite.getV1() - sprite.getV0());
+							addVertex(pose, consumer, position.x(), position.y(), position.z(), u,
+								// The source sprite is 16px high; the scrolling sheet is 32px.
+								// Its 12px animation period (3/8) is not the UV scale (1/2).
+								v * .5f + uvScroll, light, normal.x, normal.y, normal.z);
+						}
+					}
+				});
+			ms.popPose();
+		}
 	}
 
 	private static float getBeltSpeed(BeltBlockEntity be) {
@@ -554,6 +609,11 @@ public class BeltRenderer extends KineticBlockEntityRenderer<BeltBlockEntity> {
 
 		Vec3 offsetVec = Vec3.atLowerCornerOf(directionVec)
 			.scale(offset);
+		BeltSlope slope = be.getBlockState().getValue(BeltBlock.SLOPE);
+		int verticality = slope == BeltSlope.UPWARD ? 1 : slope == BeltSlope.DOWNWARD ? -1 : 0;
+		float height = verticality * Mth.clamp(offset - .5f, 0, be.beltLength - 1);
+		offsetVec = offsetVec.add(0, height, 0);
+		boolean onSlope = slope.isDiagonal() && offset >= .5f && offset <= be.beltLength - .5f;
 		ms.pushPose();
 		ms.translate(offsetVec.x, offsetVec.y, offsetVec.z);
 
@@ -566,6 +626,15 @@ public class BeltRenderer extends KineticBlockEntityRenderer<BeltBlockEntity> {
 		ItemStackRenderState itemState = BeltItemRenderHelper.createRenderState(transported.stack);
 		boolean renderUpright = BeltHelper.isItemUpright(transported.stack);
 		boolean blockItem = BeltItemRenderHelper.isGui3d(itemState);
+		if (onSlope) {
+			if (!renderUpright) {
+				boolean tiltForward = (slope == BeltSlope.DOWNWARD
+					^ beltFacing.getAxisDirection() == Direction.AxisDirection.POSITIVE) == (beltFacing.getAxis() == Axis.Z);
+				ms.mulPose((beltFacing.getAxis() == Axis.X ? com.mojang.math.Axis.ZP : com.mojang.math.Axis.XP)
+					.rotationDegrees(tiltForward ? -45 : 45));
+			}
+			ms.translate(0, 1 / 8f, 0);
+		}
 		if (renderUpright) {
 			Vec3 cameraPosition = Minecraft.getInstance().gameRenderer.mainCamera()
 				.position();

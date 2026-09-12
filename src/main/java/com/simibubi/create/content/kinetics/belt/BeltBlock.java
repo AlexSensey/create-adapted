@@ -511,7 +511,6 @@ public class BeltBlock extends HorizontalKineticBlock
 				be.setController(currentPos);
 				be.beltLength = beltChain.size();
 				be.index = index;
-				be.attachKinetics();
 				be.setChanged();
 				be.sendData();
 
@@ -523,6 +522,13 @@ public class BeltBlock extends HorizontalKineticBlock
 				return;
 			}
 			index++;
+		}
+
+		// Publish the complete chain before propagating rotation. Otherwise the
+		// first pulley can be attached while later segments still lack its controller.
+		for (BlockPos beltPos : beltChain) {
+			if (world.getBlockEntity(beltPos) instanceof BeltBlockEntity be)
+				be.attachKinetics();
 		}
 
 	}

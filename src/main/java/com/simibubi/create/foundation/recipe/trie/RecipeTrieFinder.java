@@ -9,9 +9,11 @@ import org.jetbrains.annotations.NotNull;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.simibubi.create.foundation.recipe.RecipeFinder;
+import com.simibubi.create.content.processing.basin.BasinRecipe;
 
 import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.Level;
 
@@ -24,7 +26,8 @@ public class RecipeTrieFinder {
 
 			RecipeTrie.Builder<Recipe<?>> builder = RecipeTrie.builder();
 			for (RecipeHolder<? extends Recipe<?>> recipe : list) {
-				builder.insert(recipe.value());
+				builder.insert(recipe.value() instanceof CraftingRecipe
+					? BasinRecipe.convertShapeless(recipe, world).value() : recipe.value());
 			}
 
 			return builder.build();

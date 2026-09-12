@@ -20,6 +20,7 @@ import com.simibubi.create.foundation.recipe.trie.RecipeTrieFinder;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -161,9 +162,12 @@ public abstract class BasinOperatingBlockEntity extends KineticBlockEntity {
 			Create.LOGGER.error("Failed to get recipe trie, falling back to slow logic", e);
 			list.clear();
 
-			for (RecipeHolder<? extends Recipe<?>> r : RecipeFinder.get(getRecipeCacheKey(), level, this::matchStaticFilters))
-				if (matchBasinRecipe(r.value()))
-					list.add(r.value());
+			for (RecipeHolder<? extends Recipe<?>> r : RecipeFinder.get(getRecipeCacheKey(), level, this::matchStaticFilters)) {
+				Recipe<?> candidate = r.value() instanceof CraftingRecipe
+					? BasinRecipe.convertShapeless(r, level).value() : r.value();
+				if (matchBasinRecipe(candidate))
+					list.add(candidate);
+			}
 		}
 
 		list.sort(Comparator.comparingInt(BasinOperatingBlockEntity::getRecipeIngredientCount)

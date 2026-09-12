@@ -24,6 +24,7 @@ import com.simibubi.create.content.kinetics.base.RotationIndicatorParticle;
 import com.simibubi.create.content.kinetics.simpleRelays.CogWheelBlock;
 import com.simibubi.create.content.kinetics.fan.AirFlowParticle;
 import com.simibubi.create.content.kinetics.steamEngine.SteamJetParticle;
+import com.simibubi.create.content.kinetics.waterwheel.WaterWheelStructuralBlock;
 import com.simibubi.create.content.schematics.client.ClientSchematicLoader;
 import com.simibubi.create.content.schematics.client.SchematicAndQuillHandler;
 import com.simibubi.create.content.schematics.client.SchematicHandler;
@@ -179,6 +180,8 @@ public class CreateClient {
 		net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent event) {
 		CopycatBlockClientExtensions copycatExtensions = new CopycatBlockClientExtensions();
 		event.registerBlock(copycatExtensions, AllBlocks.COPYCAT_PANEL.get(), AllBlocks.COPYCAT_STEP.get());
+		// Invisible wheel parts have an air model and must not emit terrain fragments.
+		event.registerBlock(new WaterWheelStructuralBlock.RenderProperties(), AllBlocks.WATER_WHEEL_STRUCTURAL.get());
 	}
 
 	private static void registerFluidClientExtension(

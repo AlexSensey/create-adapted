@@ -59,7 +59,6 @@ import net.neoforged.neoforge.transfer.transaction.SnapshotJournal;
 import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 
 public class BeltBlockEntity extends KineticBlockEntity implements Clearable {
-	private static boolean syncingBeltSpeeds;
 
 	public Map<Entity, TransportedEntityInfo> passengers;
 	public Optional<DyeColor> color;
@@ -160,43 +159,6 @@ public class BeltBlockEntity extends KineticBlockEntity implements Clearable {
 		if (!isController())
 			return 0;
 		return super.calculateStressApplied();
-	}
-
-	@Override
-	public void onSpeedChanged(float previousSpeed) {
-		super.onSpeedChanged(previousSpeed);
-		if (level == null || level.isClientSide())
-			return;
-		if (syncingBeltSpeeds)
-			return;
-		if (beltLength == 0)
-			return;
-
-		syncingBeltSpeeds = true;
-		try {
-			float newSpeed = getTheoreticalSpeed();
-			for (BlockPos beltPos : BeltBlock.getBeltChain(level, getController())) {
-				BlockEntity blockEntity = level.getBlockEntity(beltPos);
-				if (!(blockEntity instanceof BeltBlockEntity belt))
-					continue;
-				if (belt == this)
-					continue;
-				if (!getController().equals(belt.getController()))
-					continue;
-
-				float prevSpeed = belt.getSpeed();
-				if (newSpeed == 0) {
-					belt.removeSource();
-				} else {
-					belt.setSpeed(newSpeed);
-					belt.setSource(getBlockPos());
-					belt.onSpeedChanged(prevSpeed);
-				}
-				belt.sendData();
-			}
-		} finally {
-			syncingBeltSpeeds = false;
-		}
 	}
 
 	@Override

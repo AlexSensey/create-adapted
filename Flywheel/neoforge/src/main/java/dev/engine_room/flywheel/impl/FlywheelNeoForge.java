@@ -74,7 +74,6 @@ public final class FlywheelNeoForge {
 
 		gameEventBus.addListener(FlwCommands::registerClientCommands);
 
-		gameEventBus.addListener(FlywheelNeoForge::afterSky);
 		gameEventBus.addListener(FlywheelNeoForge::afterOpaqueFeatures);
 
 		modEventBus.addListener((EndClientResourceReloadEvent e) -> BackendManagerImpl.onEndClientResourceReload(e.error().isPresent()));
@@ -102,18 +101,6 @@ public final class FlywheelNeoForge {
 		});
 	}
 
-	private static void afterSky(RenderLevelStageEvent.AfterSky event) {
-		Minecraft minecraft = Minecraft.getInstance();
-		if (minecraft.level == null) {
-			return;
-		}
-
-		VisualizationManager manager = VisualizationManager.get(minecraft.level);
-		if (manager != null) {
-			manager.renderDispatcher().onStartLevelRender(createRenderContext(event, minecraft));
-		}
-	}
-
 	private static void afterOpaqueFeatures(RenderLevelStageEvent.AfterOpaqueFeatures event) {
 		Minecraft minecraft = Minecraft.getInstance();
 		if (minecraft.level == null) {
@@ -122,7 +109,13 @@ public final class FlywheelNeoForge {
 
 		VisualizationManager manager = VisualizationManager.get(minecraft.level);
 		if (manager != null) {
-			manager.renderDispatcher().afterEntities(createRenderContext(event, minecraft));
+			// Sky passes may be omitted (e.g. Sodium fog culling underwater).
+			// Update exactly once immediately before drawing, using the same context.
+			// afterEntities waits for the frame plan before consuming its transforms.
+			var context = createRenderContext(event, minecraft);
+			var dispatcher = manager.renderDispatcher();
+			dispatcher.onStartLevelRender(context);
+			dispatcher.afterEntities(context);
 		}
 	}
 

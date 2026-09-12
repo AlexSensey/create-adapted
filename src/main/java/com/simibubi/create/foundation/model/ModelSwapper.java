@@ -648,6 +648,10 @@ public class ModelSwapper {
 			List<BlockStateModelPart> originalParts = new ArrayList<>();
 			super.collectParts(level, pos, state, random, originalParts);
 			BeltVisualData data = data(level, pos, state);
+			// Diagonal surface models are submitted by BeltRenderer with scrolling UVs.
+			// Keep casing geometry, but do not also bake a stationary belt into the chunk.
+			if (!state.getValue(BeltBlock.CASING) && state.getValue(BeltBlock.SLOPE).isDiagonal())
+				originalParts.clear();
 			if (data.casing == CasingType.ANDESITE) {
 				TextureAtlasSprite target = AllSpriteShifts.ANDESIDE_BELT_CASING.getTarget();
 				for (BlockStateModelPart part : originalParts)

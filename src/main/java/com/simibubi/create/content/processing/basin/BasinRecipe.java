@@ -15,7 +15,6 @@ import com.simibubi.create.foundation.blockEntity.behaviour.filtering.FilteringB
 import com.simibubi.create.foundation.blockEntity.behaviour.fluid.SmartFluidTankBehaviour;
 import com.simibubi.create.foundation.blockEntity.behaviour.fluid.SmartFluidTankBehaviour.TankSegment;
 import com.simibubi.create.foundation.fluid.FluidHelper;
-import com.simibubi.create.foundation.recipe.DummyCraftingContainer;
 import com.simibubi.create.foundation.recipe.IRecipeTypeInfo;
 
 import net.createmod.catnip.api.data.Iterate;
@@ -37,6 +36,8 @@ import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 import net.neoforged.neoforge.items.IItemHandler;
 
 public class BasinRecipe extends StandardProcessingRecipe<RecipeInput> {
+	// Runtime-only origin of a converted crafting recipe; never serialized.
+	private CraftingRecipe craftingSource;
 
 	public static boolean match(BasinBlockEntity basin, Recipe<?> recipe) {
 		FilteringBehaviour filter = basin.getFilter();
@@ -93,6 +94,7 @@ public class BasinRecipe extends StandardProcessingRecipe<RecipeInput> {
 				return true;
 
 			int[] extractedItemsFromSlot = new int[availableItems.getSlots()];
+			List<ItemStack> matchedItems = new ArrayList<>();
 			int[] extractedFluidsFromTank = new int[availableFluids.getTanks()];
 
 			Ingredients:
@@ -104,6 +106,8 @@ public class BasinRecipe extends StandardProcessingRecipe<RecipeInput> {
 					ItemStack extracted = availableItems.extractItem(slot, 1, true);
 					if (!ingredient.test(extracted))
 						continue;
+					if (simulate)
+						matchedItems.add(extracted.copyWithCount(1));
 					if (!simulate)
 						availableItems.extractItem(slot, 1, false);
 					extractedItemsFromSlot[slot]++;
@@ -154,21 +158,27 @@ public class BasinRecipe extends StandardProcessingRecipe<RecipeInput> {
 			}
 
 			if (simulate) {
-				CraftingInput remainderInput = new DummyCraftingContainer(availableItems, extractedItemsFromSlot)
-					.asCraftInput();
-
-				if (recipe instanceof BasinRecipe basinRecipe) {
+				BasinRecipe basinRecipe = (BasinRecipe) recipe;
+				if (basinRecipe.craftingSource != null) {
+					CraftingRecipe source = basinRecipe.craftingSource;
+					CraftingInput input = createCraftingInput(source, matchedItems);
+					if (!source.matches(input, basin.getLevel()))
+						return false;
+					ItemStack result = source.assemble(input);
+					if (result.isEmpty() || !basin.getFilter().test(result))
+						return false;
+					recipeOutputItems.add(result.copy());
+					// Include every returned container in the same capacity check as
+					// the product, before consuming anything from the basin.
+					for (ItemStack remainder : source.getRemainingItems(input))
+						if (!remainder.isEmpty())
+							recipeOutputItems.add(remainder.copy());
+				} else {
 					recipeOutputItems.addAll(basinRecipe.rollResults(basin.getLevel().getRandom()));
 
 					for (FluidStack fluidStack : basinRecipe.getFluidResults())
 						if (!fluidStack.isEmpty())
 							recipeOutputFluids.add(fluidStack);
-				} else {
-					if (recipe instanceof CraftingRecipe craftingRecipe) {
-						for (ItemStack stack : craftingRecipe.getRemainingItems(remainderInput))
-							if (!stack.isEmpty())
-								recipeOutputItems.add(stack);
-					}
 				}
 			}
 
@@ -193,7 +203,20 @@ public class BasinRecipe extends StandardProcessingRecipe<RecipeInput> {
 		if (!result.isEmpty())
 			builder.withSingleItemOutput(result);
 		BasinRecipe basinRecipe = builder.build();
+		if (source instanceof CraftingRecipe crafting)
+			basinRecipe.craftingSource = crafting;
 		return new RecipeHolder<>(recipe.id(), basinRecipe);
+	}
+
+	private static CraftingInput createCraftingInput(CraftingRecipe source, List<ItemStack> matchedItems) {
+		if (source instanceof ShapedRecipe shaped) {
+			List<ItemStack> slots = new ArrayList<>();
+			int ingredient = 0;
+			for (var slot : shaped.getIngredients())
+				slots.add(slot.isPresent() ? matchedItems.get(ingredient++).copy() : ItemStack.EMPTY);
+			return CraftingInput.of(shaped.getWidth(), shaped.getHeight(), slots);
+		}
+		return CraftingInput.of(matchedItems.size(), 1, matchedItems);
 	}
 
 	protected BasinRecipe(IRecipeTypeInfo type, ProcessingRecipeParams params) {

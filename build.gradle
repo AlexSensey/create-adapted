@@ -534,6 +534,30 @@ tasks.named("assemble").configure {
     dependsOn(downstreamCompatibilityJar)
 }
 
+// Run AFTER the full/public bundle has been assembled (including its JarJar
+// dependencies). Apply the same pass to adapted addons using the Flywheel API.
+tasks.register("compileFlywheelIsolationTool", JavaCompile) {
+    source = files("scripts/IsolateFlywheel.java")
+    classpath = buildscript.configurations.classpath
+    destinationDirectory = layout.buildDirectory.dir("flywheel-isolation-tool")
+    javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(25) }
+}
+tasks.register("isolateFlywheelRelease", JavaExec) {
+    group = "build"
+    description = "Relocates a complete release bundle; requires isolationInput and isolationOutput."
+    dependsOn("compileFlywheelIsolationTool")
+    classpath = files(layout.buildDirectory.dir("flywheel-isolation-tool")) + buildscript.configurations.classpath
+    mainClass = "IsolateFlywheel"
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    doFirst {
+        if (!project.hasProperty("isolationInput") || !project.hasProperty("isolationOutput"))
+            throw new GradleException("Supply -PisolationInput=<bundle.jar> -PisolationOutput=<new.jar>")
+        args(project.property("isolationInput"), project.property("isolationOutput"))
+        if (project.hasProperty("isolationOldVersion"))
+            args(project.property("isolationOldVersion"), project.property("isolationNewVersion"))
+    }
+}
+
 def remapResourceLocationClassReferences = { File jarFile, boolean includeResourceLocations = true ->
     if (!jarFile.exists())
         return

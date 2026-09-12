@@ -47,6 +47,7 @@
     "datafixer.V1460Mixin"
   ],
   "client": [
+    "IntegratedServerChatThreadMixin",
     "accessor.EntityRenderDispatcherAccessor",
     "accessor.FontAccessor",
     "accessor.HudAccessor",

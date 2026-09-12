@@ -52,7 +52,7 @@ public class WaterWheelStructuralBlock extends DirectionalBlock implements IWren
 	public static final MapCodec<WaterWheelStructuralBlock> CODEC = simpleCodec(WaterWheelStructuralBlock::new);
 
 	public WaterWheelStructuralBlock(Properties p_52591_) {
-		super(p_52591_);
+		super(p_52591_.noTerrainParticles());
 	}
 
 	@Override

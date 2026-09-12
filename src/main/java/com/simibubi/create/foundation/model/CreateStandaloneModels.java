@@ -22,6 +22,12 @@ import net.neoforged.neoforge.client.model.standalone.StandaloneModelKey;
 
 public class CreateStandaloneModels {
 	private static final Map<StandaloneModelKey<?>, Identifier> MODELS = new LinkedHashMap<>();
+	public static final StandaloneModelKey<BlockStateModelPart> BELT_DIAGONAL_START =
+		blockPart("belt_diagonal_start", Create.asResource("block/belt/diagonal_start"));
+	public static final StandaloneModelKey<BlockStateModelPart> BELT_DIAGONAL_MIDDLE =
+		blockPart("belt_diagonal_middle", Create.asResource("block/belt/diagonal_middle"));
+	public static final StandaloneModelKey<BlockStateModelPart> BELT_DIAGONAL_END =
+		blockPart("belt_diagonal_end", Create.asResource("block/belt/diagonal_end"));
 
 	public static final StandaloneModelKey<BlockStateModelPart> WATER_WHEEL =
 		blockPart("water_wheel", Create.asResource("block/water_wheel/wheel"));

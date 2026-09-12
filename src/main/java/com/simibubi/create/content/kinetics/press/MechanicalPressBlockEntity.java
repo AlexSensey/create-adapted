@@ -32,6 +32,7 @@ import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.item.crafting.ShapedRecipe;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -190,8 +191,10 @@ public class MechanicalPressBlockEntity extends BasinOperatingBlockEntity implem
 		if (!(recipe instanceof CraftingRecipe) || !AllConfigs.server().recipes.allowShapedSquareInPress.get())
 			return false;
 		NonNullList<Ingredient> ingredients = NonNullList.create();
-		ingredients.addAll(recipe.placementInfo()
-			.ingredients());
+		// Read every occupied crafting slot, including repeated ingredients.
+		ingredients.addAll(recipe instanceof ShapedRecipe shaped
+			? shaped.getIngredients().stream().flatMap(Optional::stream).toList()
+			: recipe.placementInfo().ingredients());
 		return (ingredients.size() == 4 || ingredients.size() == 9) && ItemHelper.matchAllIngredients(ingredients);
 	}
 
